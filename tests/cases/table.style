@@ -1,0 +1,75 @@
+<html>
+  <body>
+    @ body
+    = margin=0#1
+    <style>
+    - "\n"
+    <table>
+      @ table
+      = border-spacing=0#1
+      - "\n"
+      <caption>
+        - "quarterly numbers"
+      - "\n"
+      <thead>
+        - "\n"
+        <tr>
+          <th>
+            @ th | th
+            = border=8px solid gray#1 padding=8px#1 text-align=center#1
+            - "region"
+          <th>
+            @ th | th
+            = border=8px solid gray#1 padding=8px#1 text-align=center#1
+            - "q1"
+          <th>
+            @ th | th
+            = border=8px solid gray#1 padding=8px#1 text-align=center#1
+            - "q2"
+        - "\n"
+      - "\n"
+      <tbody>
+        - "\n"
+        <tr>
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "north"
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "120"
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "140"
+        - "\n"
+        <tr>
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "south"
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "90"
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "110"
+        - "\n"
+        <tr>
+          <td colspan="2">
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "combined"
+          <td>
+            @ td
+            = border=8px solid gray#1 padding=8px#1
+            - "460"
+        - "\n"
+      - "\n"
+    - "\n"
+    <p>
+      - "after the table"
+    - "\n"

@@ -1,0 +1,15 @@
+root [0,0 640x160]
+  block <html> [0,16 640x144] m=16,0,0,0
+    block <body> [0,16 640x144]
+      block <div> [0,16 80x48]
+        text [0,0 0x0] "L"
+      block <div> [632,16 64x32]
+        text [0,0 0x0] "R"
+      block <p> [80,16 552x48] m=0,0,16,0
+        text [0,0 0x0] "text should wrap around "
+      block <p> [0,80 640x16] m=16,0,16,0
+        text [0,0 0x0] "cleared to below both fl"
+      block <pre> [0,112 640x48] p=8,8,8,8
+        text [0,0 0x0] "
+  preformatted
+    inde"

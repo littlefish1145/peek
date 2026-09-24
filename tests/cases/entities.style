@@ -1,0 +1,22 @@
+<html>
+  <body>
+    - "\n"
+    <p>
+      - "basic: & < > \" '"
+    - "\n"
+    <p>
+      - "numeric: © — — ABC"
+    - "\n"
+    <p>
+      - "named: © ® ° ± × ÷ … —"
+    - "\n"
+    <p>
+      - "quotes: “q” ‘s’ «x»"
+    - "\n"
+    <p>
+      - "arrows: ← ↑ → ↓ • ™"
+    - "\n"
+    <p>
+      - "unknown: &notanentity; &amp bare &#xZZ;"
+    - "\n"
+    - "\n"

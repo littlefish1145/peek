@@ -1,0 +1,17 @@
+root [0,0 640x258] m=0,0,25,0
+  block <html> [0,16 640x242] m=16,0,25,0
+    block <body> [0,16 640x242]
+      block <p> [0,16 640x16] m=0,0,16,0
+        text [0,0 0x0] "para"
+      block <h1> [0,53 640x16] m=21,0,21,0
+        text [0,0 0x0] "one"
+      block <h2> [0,90 640x16] m=20,0,20,0
+        text [0,0 0x0] "two"
+      block <h3> [0,126 640x16] m=19,0,19,0
+        text [0,0 0x0] "three"
+      block <h4> [0,163 640x16] m=21,0,21,0
+        text [0,0 0x0] "four"
+      block <h5> [0,201 640x16] m=22,0,22,0
+        text [0,0 0x0] "five"
+      block <h6> [0,242 640x16] m=25,0,0,0
+        text [0,0 0x0] "six"

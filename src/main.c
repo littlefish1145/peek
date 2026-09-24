@@ -1,5 +1,6 @@
 #include "peek.h"
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/select.h>
 
@@ -37,8 +38,9 @@ static int getkey(int tmo) {
 }
 
 static void frame(void) {
-    fputs(CLEAR, stdout);
-    render(DOM);
+    paint_set_focus(FOC);
+    peek_layout();
+    peek_paint();
     if (NLOG) putchar('\n');
     for (int i = 0; i < NLOG; i++) puts(LOGS[i]);
 }
@@ -117,42 +119,7 @@ static int load_page(const char *u) {
     DOM = parse_html(body);
     run_scripts(DOM);
     js_pump();
-    static char NOCSS[1] = "";
-    char *css = NOCSS;
-    Node *st = find_tag(DOM, K_STYLE);
-    if (st && st->nchild && (st->child[0]->def->f & T_TEXTN)) {
-        Node *t = st->child[0];
-        css = t->text, t->text[t->tlen] = 0;
-    }
-    Node *LK[64];
-    int nlk = 0;
-    css_links(DOM, LK, &nlk, 64);
-    char *ext = 0;
-    size_t extl = 0;
-    for (int i = 0; i < nlk; i++) {
-        char *hu = attr_get(LK[i], "href");
-        if (!hu || !*hu) continue;
-        size_t cl;
-        char *c = load_url(hu, &cl);
-        if (!c) continue;
-        ext = realloc(ext, extl + cl + 2);
-        if (!ext) oom();
-        memcpy(ext + extl, c, cl);
-        extl += cl;
-        ext[extl++] = '\n';
-        ext[extl] = 0;
-        free(c);
-    }
-    char *all = css;
-    if (extl) {
-        size_t il = strlen(css);
-        all = malloc(extl + il + 1);
-        if (!all) oom();
-        memcpy(all, ext, extl);
-        memcpy(all + extl, css, il + 1);
-        free(ext);
-    }
-    parse_css(all);
+    parse_css(css_collect(DOM, ub));
     apply_styles(DOM);
     qquery("button,a[href]", sizeof "button,a[href]" - 1);
     NBTN = NQL;
@@ -162,6 +129,8 @@ static int load_page(const char *u) {
         memcpy(BTNS, QL, (size_t)NQL * sizeof *BTNS);
         FOC = BTNS[0];
     }
+    js_win_event("domcontentloaded");
+    js_win_event("load");
     free(CURURL);
     CURURL = sdup(ub, strlen(ub));
     return 1;
@@ -200,14 +169,50 @@ static void back(void) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) return fprintf(stderr, "usage: %s <file.html|url>\n", argv[0]), 1;
-    if (!load_page(argv[1])) return 1;
+    if (argc < 2) return fprintf(stderr, "usage: %s [--dump] <file.html|url>\n", argv[0]), 1;
+    vx_init();
+    js_viewport(vx_width(), vx_height());
+    int dump = 0, runms = 0;
+    const char *arg = argv[1];
+    if (!strcmp(arg, "--dump")) {
+        dump = 1;
+        if (argc < 3) return fprintf(stderr, "usage: %s --dump <file.html>\n", argv[0]), 1;
+        arg = argv[2];
+    } else if (!strcmp(arg, "--run")) {
+        runms = argc > 3 ? atoi(argv[2]) : 0;
+        if (runms <= 0 || argc < 4)
+            return fprintf(stderr, "usage: %s --run <ms> <file.html|url>\n", argv[0]), 1;
+        arg = argv[3];
+    }
+    if (!load_page(arg)) return 1;
+    if (dump) {
+        peek_dump();
+        js_done();
+        return 0;
+    }
+    if (runms) {
+        struct timespec a, b;
+        clock_gettime(CLOCK_MONOTONIC, &a);
+        for (;;) {
+            js_pump();
+            double w = js_next_wait();
+            if (w < 0) break;
+            if (w > 50) w = 50;
+            usleep((useconds_t)(w * 1000) + 1000);
+            clock_gettime(CLOCK_MONOTONIC, &b);
+            if ((b.tv_sec - a.tv_sec) * 1000 + (b.tv_nsec - a.tv_nsec) / 1000000 > runms) break;
+        }
+        for (int i = 0; i < NLOG; i++) puts(LOGS[i]);
+        js_done();
+        return 0;
+    }
     if (!isatty(0) || !isatty(1)) {
         FOC = 0;
-        fputs(CLEAR, stdout);
         js_pump();
         apply_styles(DOM);
-        render(DOM);
+        paint_set_focus(0);
+        peek_layout();
+        peek_paint();
         if (NLOG) putchar('\n');
         for (int i = 0; i < NLOG; i++) puts(LOGS[i]);
         if (NAL) putchar('\n');

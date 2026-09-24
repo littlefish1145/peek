@@ -1,0 +1,96 @@
+<html>
+  @ :root
+  = color=white#256
+  <body>
+    = color=white#-1
+    <style>
+      = color=white#-1
+    - "\n"
+    <ul>
+      = color=white#-1
+      - "\n  "
+      <li>
+        @ li:nth-child(odd) | li:nth-last-child(1) | li:nth-child(2n + 1) | ul li:not(.skip)
+        = color=green#257 font-weight=bold#257 letter-spacing=1px#257 margin-top=1px#258
+        - "one"
+      - "\n  "
+      <li class="skip">
+        @ li:nth-child(2) | li:nth-child(2n) | li:not(:first-child)
+        = color=red#257 text-decoration=underline#257 margin-left=2px#257
+        - "two"
+      - "\n  "
+      <li>
+        @ li:nth-child(odd) | li:nth-child(2n + 1) | ul li:not(.skip) | li:not(:first-child)
+        = color=green#257 letter-spacing=1px#257 margin-top=1px#258 margin-left=2px#257
+        - "three"
+      - "\n  "
+      <li>
+        @ li:nth-child(2n) | ul li:not(.skip) | li:not(:first-child)
+        = color=white#-1 text-decoration=underline#257 margin-top=1px#258 margin-left=2px#257
+        - "four"
+      - "\n"
+    - "\n"
+    <p>
+      @ p:first-of-type
+      = color=aqua#257
+      - "a"
+    - "\n"
+    <p>
+      = color=white#-1
+      - "b"
+    - "\n"
+    <p>
+      = color=white#-1
+      - "c"
+    - "\n"
+    <p>
+      @ p:last-of-type
+      = color=white#-1 font-style=italic#257
+      <span>
+        @ span:only-child
+        = color=silver#257 font-style=italic#-1
+        - "s"
+    - "\n"
+    <div>
+      @ div:empty
+      = color=white#-1 border-width=1px#257
+    - "\n"
+    <div>
+      = color=white#-1
+      - "x"
+    - "\n"
+    <input type="checkbox" checked="">
+      @ input:checked | input:enabled
+      = color=yellow#257 min-width=2px#257
+    - "\n"
+    <input type="text" disabled="">
+      @ input:disabled
+      = color=white#-1 opacity=0.5#257
+    - "\n"
+    <input type="text">
+      @ input:enabled
+      = color=white#-1 min-width=2px#257
+    - "\n"
+    <a rel="prev next" href="#">
+      @ a[rel~="next"]
+      = color=lime#257 text-decoration=underline#-1
+      - "link"
+    - "\n"
+    <div lang="en-GB">
+      @ div[lang|="en"]
+      = color=teal#257
+      - "brit"
+    - "\n"
+    <div lang="en">
+      @ div[lang|="en"]
+      = color=teal#257
+      - "us"
+    - "\n"
+    <div lang="ruby">
+      = color=white#-1
+      - "not"
+    - "\n"
+    <b class="a b">
+      = font-weight=bold#-1 color=white#-1
+      - "x"
+    - "\n"

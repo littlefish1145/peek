@@ -1,0 +1,50 @@
+root [0,0 640x464] m=0,0,16,0
+  block <html> [0,16 640x448] m=16,0,16,0
+    block <body> [0,16 640x448]
+      block <p> [0,16 640x16] m=0,0,16,0
+        text [0,0 0x0] "[q]"
+        text [0,0 0x0] "text"
+        text [0,0 0x0] " (end)"
+      block <ul> [0,48 640x32] m=16,0,16,0 p=0,0,0,40
+        list <li> [40,48 600x16]
+          text [0,0 0x0] "- "
+          text [0,0 0x0] "one"
+        list <li> [40,64 600x16]
+          text [0,0 0x0] "- "
+          text [0,0 0x0] "two"
+      anon [0,96 640x16]
+        inline <a> [0,0 0x0]
+          text [0,0 0x0] "link"
+          text [0,0 0x0] " (x.html)"
+      block <p> [0,128 640x16] m=16,0,16,0
+        text [0,0 0x0] "no pseudo"
+      block <p> [0,160 640x16] m=16,0,16,0
+        text [0,0 0x0] "empty pseudo"
+      block <p> [0,192 640x16] m=16,0,16,0
+        text [0,0 0x0] "A—B"
+        text [0,0 0x0] "escape"
+      block <p> [0,224 640x16] m=16,0,16,0
+        text [0,0 0x0] "😀!"
+        text [0,0 0x0] "emoji escape"
+      block <p> [0,256 640x16] m=16,0,16,0
+        text [0,0 0x0] "x�y"
+        text [0,0 0x0] "null escape"
+      block <p> [0,288 640x16] m=16,0,16,0
+        text [0,0 0x0] "a
+b"
+        text [0,0 0x0] "hex newline"
+      block <p> [0,320 640x16] m=16,0,16,0
+        text [0,0 0x0] "1=M=2"
+        text [0,0 0x0] "concat"
+      block <p> [0,352 640x16] m=16,0,16,0
+        text [0,0 0x0] "display none pseudo"
+      block <p> [0,384 640x16] m=16,0,16,0
+        text [0,0 0x0] "high"
+        text [0,0 0x0] "specificity"
+      block <p> [0,416 640x16] m=16,0,16,0
+        text [0,0 0x0] "legacy"
+        text [0,0 0x0] " legacy-colon"
+      block <p> [0,448 640x16] m=16,0,0,0
+        inline <b> [0,0 0x0]
+          text [0,0 0x0] ">"
+          text [0,0 0x0] "x"

@@ -1,0 +1,11 @@
+basic: & < > " '
+
+numeric: © — — ABC
+
+named: © ® ° ± × ÷ … —
+
+quotes: “q” ‘s’ «x»
+
+arrows: ← ↑ → ↓ • ™
+
+unknown: &notanentity; &amp bare &#xZZ;

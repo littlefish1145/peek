@@ -1,0 +1,27 @@
+peek: HTTP 404
+status 200 ok true
+url http://127.0.0.1:8741/text
+ct text/plain; charset=utf-8 peek yes
+miss null has true keys 6
+text plain-body
+reqhdr Host: 127.0.0.1:8741|User-Agent: peek/1.0|Accept: text/html,*/*|Content-Type: text/plain;charset=UTF-8|Content-Length: 7|X-Custom: abc
+json 1 2,3
+fail TypeError Failed to fetch
+form size 3 get 1 2&= all 1 2&=;3 has truefalse
+form ct application/x-www-form-urlencoded;charset=UTF-8
+form body a=1+2%26%3D&b=x&a=3
+mp kind multipart/form-data len 281
+mp body --@^Content-Disposition: form-data; name="note"^^hi there^--@^Content-Disposition: form-data; name="file"; filename="t.txt"^Content-Type: text/plain^^line1|end^--@--^
+blob ct text/zzz body zz
+xhr 200 yes [plain-body]
+xhr hdrs content-length,content-type,date,server,x-peek null null
+xhr get 200 Host: 127.0.0.1:8741|User-Agent: peek/1.0|Accept: text/html,*/*
+abort AbortError
+es open 1 http://127.0.0.1:8741/sse
+ping [first] id 1
+msg 1 [line1|line2] last 1 origin http://127.0.0.1:8741
+msg 2 [no-space] last 1 origin http://127.0.0.1:8741
+msg 3 [last] last 1 origin http://127.0.0.1:8741
+es close 2
+es end 2 sse stream ended
+alldone

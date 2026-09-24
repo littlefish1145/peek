@@ -1,0 +1,41 @@
+<style>
+li:nth-child(2) { color: red; }
+li:nth-child(odd) { color: green; }
+li:nth-child(2n) { text-decoration: underline; }
+li:nth-last-child(1) { font-weight: bold; }
+li:nth-child(2n + 1) { letter-spacing: 1px; }
+p:first-of-type { color: aqua; }
+p:last-of-type { font-style: italic; }
+p:nth-of-type(2) { background-color: navy; }
+span:only-child { color: silver; }
+div:empty { border-width: 1px; }
+:root { color: white; }
+ul li:not(.skip) { margin-top: 1px; }
+li:not(:first-child) { margin-left: 2px; }
+input:checked { color: yellow; }
+input:disabled { opacity: 0.5; }
+input:enabled { min-width: 2px; }
+a[rel~="next"] { color: lime; }
+div[lang|="en"] { color: teal; }
+b.a.c { font-weight: bold; }
+</style>
+<ul>
+  <li>one</li>
+  <li class="skip">two</li>
+  <li>three</li>
+  <li>four</li>
+</ul>
+<p>a</p>
+<p>b</p>
+<p>c</p>
+<p><span>s</span></p>
+<div></div>
+<div>x</div>
+<input type="checkbox" checked>
+<input type="text" disabled>
+<input type="text">
+<a rel="prev next" href="#">link</a>
+<div lang="en-GB">brit</div>
+<div lang="en">us</div>
+<div lang="ruby">not</div>
+<b class="a b">x</b>

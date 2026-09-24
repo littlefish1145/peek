@@ -1,0 +1,13 @@
+root [0,0 640x96] m=0,0,16,0
+  block <html> [0,16 640x80] m=16,0,16,0
+    block <body> [0,16 640x80]
+      block <p> [0,16 640x16] m=0,0,16,0
+        text [0,0 0x0] "before stray
+"
+      block <p> [0,48 640x16] m=16,0,16,0
+        text [0,0 0x0] "normal & decoded
+"
+      block <p> [0,80 640x16] m=16,0,0,0
+        text [0,0 0x0] "truncated tag "
+        text [0,0 0x0] "div class="x
+"

@@ -1,0 +1,11 @@
+ │───────────────────────────│          absolutely     
+ │ box model: 200px content  │          positioned     
+ │ + 8px padding + 8px       │
+ │ border                    │
+ │                           │
+ │───────────────────────────│
+collapsing: inline background and text
+
+second paragraph — one blank row between
+
+relatively offset by 2 columns and half a row

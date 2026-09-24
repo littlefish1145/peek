@@ -1,0 +1,9 @@
+L         text should wrap around the floated boxes rather than starting below R
+          them, and it should keep flowing until the available width on each    
+          line runs out.
+
+cleared to below both floats                                                    
+
+   preformatted                                                                 
+     indented   with   spaces                                                   
+                                                                                

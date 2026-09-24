@@ -1,0 +1,21 @@
+<html>
+  <body>
+    - "\n"
+    <p>
+      <a href="next.html">
+        = color=blue#-1 text-decoration=underline#-1
+        - "go next"
+      - " and "
+      <a>
+        = color=blue#-1 text-decoration=underline#-1
+        - "plain anchor"
+    - "\n"
+    <button>
+      - "press"
+    - "\n"
+    <p>
+      <a href="upper.html">
+        = color=blue#-1 text-decoration=underline#-1
+        - "upper link"
+    - "\n"
+    - "\n"

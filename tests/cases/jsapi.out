@@ -1,0 +1,37 @@
+[2J[H[0mjs api surface[0m
+
+url https://ex.com:8080/a/b?x=1&y=2#h
+set https://ex.com/p?x=1&z=3%204#frag sp x=1&z=3%204 size 2
+rel ../img/a.png -> https://ex.com/img/a.png
+rel a/b.html -> https://ex.com/docs/a/b.html
+rel ./x -> https://ex.com/docs/x
+rel ?q=2 -> https://ex.com/docs/index.html?q=2
+rel #h -> https://ex.com/docs/index.html#h
+rel /abs -> https://ex.com/abs
+rel //other/x -> https://other/x
+rel https://o.y/z -> https://o.y/z
+rel  -> https://ex.com/docs/index.html
+rel a/b?c=1#d -> https://ex.com/docs/a/b?c=1#d
+ups a=1&a=3&b=2 get 1 all 1,3 has false size 3
+iter k=1,j=2
+mm true false true false
+mql (min-width: 300px) true
+vp 640x384 screen 640x384 dpr 1 rs loading
+rv 4 true
+uuid true
+perf true number
+ab0 false
+ab1 true listener yes
+custom 7
+xhr 0 0
+blob 6 text/plain slice 2 tail 1
+objurl blob:/ known true
+revoked false
+file n.txt 1 isblob true type text/plain
+blobtext 4 ab中c
+blobab 6
+fr string 4 done true
+fr2 data:;base64,AQL6
+fr3 3
+dcl
+load readyState complete

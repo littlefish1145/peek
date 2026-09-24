@@ -1,0 +1,11 @@
+<html>
+  <body>
+    <style>
+    - "\n"
+    <button class="btn">
+      @ .btn
+      = color=231#256 background-color=rgb(20 90 160)#256 padding=8px#256 width=96px#256
+      - "OK"
+    - "\n"
+    <script>
+    - "\n"

@@ -1,0 +1,65 @@
+<html>
+  <body>
+    <style>
+    - "\n"
+    <p class="q">
+      + "[q]"
+      - "text"
+      + " (end)"
+    - "\n"
+    <ul>
+      <li>
+        + "- "
+        - "one"
+      <li>
+        + "- "
+        - "two"
+    - "\n"
+    <a class="ext" href="x.html">
+      = color=blue#-1 text-decoration=underline#-1
+      - "link"
+      + " (x.html)"
+    - "\n"
+    <p class="none">
+      - "no pseudo"
+    - "\n"
+    <p class="empty">
+      - "empty pseudo"
+    - "\n"
+    <p class="esc">
+      + "A—B"
+      - "escape"
+    - "\n"
+    <p class="emoji">
+      + "😀!"
+      - "emoji escape"
+    - "\n"
+    <p class="bad">
+      + "x�y"
+      - "null escape"
+    - "\n"
+    <p class="hexnl">
+      + "a\nb"
+      - "hex newline"
+    - "\n"
+    <p class="multi" data-x="=M=">
+      + "1=M=2"
+      - "concat"
+    - "\n"
+    <p class="gone">
+      - "display none pseudo"
+    - "\n"
+    <p class="override spec">
+      + "high"
+      - "specificity"
+    - "\n"
+    <p class="single">
+      - "legacy"
+      + " legacy-colon"
+    - "\n"
+    <p class="nested">
+      <b>
+        = font-weight=bold#-1
+        + ">"
+        - "x"
+    - "\n"

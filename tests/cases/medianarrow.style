@@ -1,0 +1,40 @@
+<html>
+  <body>
+    @ @media screen body
+    = color=green#1
+    - "\n"
+    <p>
+      @ @media (max-width: 600px) p
+      = color=navy#1
+      - "para"
+    - "\n"
+    <h1>
+      = font-weight=bold#-1 color=green#-1
+      - "one"
+    - "\n"
+    <h2>
+      = font-weight=bold#-1 color=green#-1
+      - "two"
+    - "\n"
+    <h3>
+      = font-weight=bold#-1 color=green#-1
+      - "three"
+    - "\n"
+    <h4>
+      @ @media (min-width: 10em), (max-width: 1px) h4
+      = font-weight=bold#-1 color=lime#1
+      - "four"
+    - "\n"
+    <h5>
+      @ @media all and (max-width: 1280px) h5
+      = font-weight=bold#-1 color=teal#1
+      - "five"
+    - "\n"
+    <h6>
+      = font-weight=bold#-1 color=green#-1
+      - "six"
+    - "\n"
+    <style>
+      = color=green#-1
+    - "\n"
+    - "\n"

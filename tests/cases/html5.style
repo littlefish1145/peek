@@ -1,0 +1,81 @@
+<html>
+  <body>
+    - "\n"
+    <title>
+      - "raw title with <b>markup</b> inside"
+    - "\n"
+    <p>
+      - "first paragraph"
+      <span>
+        - "inline"
+      - " still first\n"
+    <p>
+      - "second paragraph\n"
+    <div>
+      - "\n  "
+      <ul>
+        - "\n    "
+        <li>
+          - "one\n    "
+        <li>
+          - "two\n    "
+        <li>
+          - "THREE\n  "
+      - "\n  "
+      <dl>
+        - "\n    "
+        <dt>
+          - "term\n    "
+        <dd>
+          - "definition\n    "
+        <dt>
+          - "term2\n    "
+        <dd>
+          - "def2\n  "
+      - "\n  "
+      <table>
+        - "\n    "
+        <tr>
+          <td>
+            - "a"
+          <td>
+            - "b\n    "
+        <tr>
+          <th>
+            - "h1"
+          <th>
+            - "h2\n  "
+      - "\n  "
+      <select>
+        - "\n    "
+        <option>
+          - "one\n    "
+        <option>
+          - "two\n  "
+      - "\n  "
+      <textarea>
+        - "raw <b>text</b> here"
+      - "\n"
+    - "\n"
+    - "\n"
+    <p>
+      - "unclosed p before unmatched end tag\n"
+      - "\n"
+      - "\n"
+    <p>
+      - "after unmatched close"
+    - "\n"
+    <b>
+      = font-weight=bold#-1
+      - "bold with "
+      <b>
+        = font-weight=bold#-1
+        - "nested bold"
+      - " tail"
+    - "\n"
+    <p>
+      - "block "
+    <div>
+      - "inside p"
+    - " after"
+    - "\n"

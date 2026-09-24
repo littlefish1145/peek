@@ -1,0 +1,5 @@
+root [0,0 640x32] m=0,0,16,0
+  block <html> [0,16 640x16] m=16,0,16,0
+    block <body> [0,16 640x16]
+      block <p> [0,16 640x16]
+        text [0,0 0x0] "js api surface"

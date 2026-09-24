@@ -1,0 +1,13 @@
+state0 0 url ws://127.0.0.1:8731/echo type arraybuffer
+open 1
+text queued-before-open bin=false
+text hello bin=false
+bin 3 1.2.250 bin=true
+close 1000 [done] clean=true state 3
+second slot-reuse
+second close 3
+badstate 3 websocket connect failed
+badclose 1006 clean=false
+srverr 3 bad handshake status
+srvclose 1006 clean=false
+alldone

@@ -20,6 +20,7 @@ static Node *FOCN;
 static int FOCP;
 static GtkWidget *REFCUS;
 static char *CURURL;
+static int LOADF;
 static char *HIST[32];
 static int NH, ASEEN, LOGSEEN;
 
@@ -367,7 +368,12 @@ static void run_text(Node *n, Para *P) {
 
 static void flow(Node *n, Para *P, int depth) {
     if (n->def->f & T_TEXTN) {
-        run_text(n, P);
+        if (n->gen) {
+            FS save = P->fs;
+            apply_fs(n, &P->fs);
+            run_text(n, P);
+            P->fs = save;
+        } else run_text(n, P);
         return;
     }
     if ((n->def->f & T_HIDDEN) || hidden_css(n)) return;
@@ -560,43 +566,81 @@ static void widget_input(Node *n, GtkBox *box, int ctr) {
     if (box) gtk_box_pack_start(box, e, FALSE, FALSE, 0);
 }
 
+static double img_px(const char *v, double cont, double em) {
+    if (!v) return 0;
+    char *e;
+    strtod(v, &e);
+    return css_px(v, *e == 'e' ? em : *e == '%' ? cont : 0);
+}
+
 static void widget_img(Node *n, GtkBox *box, int ctr) {
     char *src = attr_get(n, "src");
     GdkPixbuf *pb = 0;
-    if (src) {
-        if (url_is(src) || url_is(CURURL)) {
-            char *u = url_is(src) ? sdup(src, strlen(src)) : url_join(CURURL, src);
-            size_t ln;
-            char *b = http_get(u, &ln);
-            if (b) {
-                GdkPixbufLoader *ld = gdk_pixbuf_loader_new();
-                gdk_pixbuf_loader_write(ld, (const guchar *)b, ln, 0);
-                gdk_pixbuf_loader_close(ld, 0);
-                pb = gdk_pixbuf_loader_get_pixbuf(ld);
-                if (pb) g_object_ref(pb);
-                g_object_unref(ld);
-                free(b);
-            }
-            free(u);
-        } else {
-            pb = gdk_pixbuf_new_from_file(src, 0);
+    if (src && *src) {
+        size_t ln;
+        char *b = load_url(src, &ln);
+        if (b) {
+            GdkPixbufLoader *ld = gdk_pixbuf_loader_new();
+            gdk_pixbuf_loader_write(ld, (const guchar *)b, ln, 0);
+            gdk_pixbuf_loader_close(ld, 0);
+            pb = gdk_pixbuf_loader_get_pixbuf(ld);
+            if (pb) g_object_ref(pb);
+            g_object_unref(ld);
+            free(b);
         }
     }
-    GtkWidget *img = pb ? gtk_image_new_from_pixbuf(pb)
-                        : gtk_image_new_from_icon_name("image-missing", GTK_ICON_SIZE_BUTTON);
-    if (pb) {
-        char *h = attr_get(n, "height");
-        int px = 0;
-        const char *cw = st_find(n, &P_WIDTH);
-        if (cw) px = (int)css_px(cw, 0);
-        char *w = attr_get(n, "width");
-        if (!px && w && atoi(w) > 0) px = atoi(w);
-        if (h && atoi(h) > 0 && (!px || atoi(h) < px)) px = atoi(h);
-        if (px > 0) gtk_image_set_pixel_size(GTK_IMAGE(img), px);
+    GtkWidget *w;
+    if (!pb) {
+        char *alt = attr_get(n, "alt");
+        if (!alt || !*alt) {
+            w = gtk_image_new_from_icon_name("image-missing", GTK_ICON_SIZE_BUTTON);
+        } else {
+            GString *g = g_string_new(0);
+            g_string_append(g, "<span foreground='#8a919e' font_style='italic'>");
+            esc(g, alt, (int)strlen(alt), 0, 0);
+            g_string_append(g, "</span>");
+            w = gtk_label_new(NULL);
+            gtk_label_set_markup(GTK_LABEL(w), g->str);
+            gtk_label_set_line_wrap(GTK_LABEL(w), TRUE);
+            gtk_label_set_xalign(GTK_LABEL(w), 0);
+            g_string_free(g, TRUE);
+        }
+    } else {
+        int iw = gdk_pixbuf_get_width(pb), ih = gdk_pixbuf_get_height(pb);
+        double em = 14, cont = 800;
+        const char *fz = st_find(n, &P_FSIZE);
+        if (fz) em = css_px(fz, em);
+        double tw = img_px(st_find(n, &P_WIDTH), cont, em);
+        double th = img_px(st_find(n, &P_HEIGHT), cont, em);
+        char *aw = attr_get(n, "width"), *ah = attr_get(n, "height");
+        if (!tw && aw && atoi(aw) > 0) tw = atoi(aw);
+        if (!th && ah && atoi(ah) > 0) th = atoi(ah);
+        int fixw = tw > 0, fixh = th > 0;
+        if (fixw != fixh && iw > 0 && ih > 0) {
+            if (fixw) th = tw * ih / iw;
+            else tw = th * iw / ih;
+        } else if (!fixw && !fixh) tw = iw, th = ih;
+        double mw = img_px(st_find(n, &P_MAXW), cont, em);
+        double mh = img_px(st_find(n, &P_MAXH), cont, em);
+        if (mw > 0 && tw > mw) {
+            if (!fixh) th *= mw / tw;
+            tw = mw;
+        }
+        if (mh > 0 && th > mh) {
+            if (!fixw) tw *= mh / th;
+            th = mh;
+        }
+        int W = (int)(tw + .5), H = (int)(th + .5);
+        if (W < 1 || H < 1 || W > 4096 || H > 4096) W = iw, H = ih;
+        GdkPixbuf *out = pb;
+        if (W > 0 && H > 0 && (W != iw || H != ih))
+            out = gdk_pixbuf_scale_simple(pb, W, H, GDK_INTERP_BILINEAR);
+        w = gtk_image_new_from_pixbuf(out);
         g_object_unref(pb);
+        if (out != pb) g_object_unref(out);
     }
-    if (ctr) gtk_widget_set_halign(img, GTK_ALIGN_CENTER);
-    if (box) gtk_box_pack_start(box, img, FALSE, FALSE, 0);
+    if (ctr) gtk_widget_set_halign(w, GTK_ALIGN_CENTER);
+    if (box) gtk_box_pack_start(box, w, FALSE, FALSE, 0);
 }
 
 static GtkWidget *vbox(int sp) {
@@ -818,6 +862,8 @@ static void reload(void) {
             FOCP = gtk_editable_get_position(GTK_EDITABLE(fw));
         }
     }
+    js_viewport(gtk_widget_get_allocated_width(CANVAS),
+                gtk_widget_get_allocated_height(CANVAS));
     apply_styles(DOM);
     clear_fixed(GTK_FIXED(OVER));
     clear_box(GTK_BOX(CONTENT));
@@ -849,6 +895,10 @@ static void reload(void) {
     }
     gtk_window_set_title(GTK_WINDOW(WIN), buf);
     if (CURURL) gtk_entry_set_text(GTK_ENTRY(ENTRY), CURURL);
+    if (!LOADF) {
+        LOADF = 1;
+        js_win_event("load");
+    }
     const char *shot = getenv("PEEK_SHOT");
     if (shot && gtk_widget_get_window(CANVAS)) {
         while (gtk_events_pending()) gtk_main_iteration();
@@ -986,14 +1036,9 @@ int load_page(const char *u) {
     DOM = parse_html(body);
     run_scripts(DOM);
     js_pump();
-    static char NOCSS[1] = "";
-    char *css = NOCSS;
-    Node *st = find_tag(DOM, K_STYLE);
-    if (st && st->nchild && (st->child[0]->def->f & T_TEXTN)) {
-        Node *t = st->child[0];
-        css = t->text, t->text[t->tlen] = 0;
-    }
-    parse_css(css);
+    parse_css(css_collect(DOM, ub));
+    LOADF = 0;
+    js_win_event("domcontentloaded");
     free(CURURL);
     CURURL = sdup(ub, strlen(ub));
     return 1;

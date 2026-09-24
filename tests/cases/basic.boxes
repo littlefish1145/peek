@@ -1,0 +1,19 @@
+root [0,0 640x211] m=0,0,8,0
+  block <html> [0,21 640x190] m=21,0,8,0
+    block <body> [0,21 640x190]
+      block <h1> [0,21 640x16] m=0,0,21,0
+        text [0,0 0x0] "heading one"
+      block <p> [0,58 640x16] m=16,0,16,0
+        text [0,0 0x0] "first para"
+      block <p> [0,90 640x16] m=16,0,16,0
+        text [0,0 0x0] "second para"
+      block <ul> [0,122 640x32] m=16,0,16,0 p=0,0,0,40
+        list <li> [40,122 600x16]
+          text [0,0 0x0] "alpha"
+        list <li> [40,138 600x16]
+          text [0,0 0x0] "beta"
+      block <div> [0,170 640x16]
+        text [0,0 0x0] "prefix"
+      block <div> [0,186 640x16]
+        text [0,0 0x0] "suffix"
+      hr <hr> [0,210 640x1] m=8,0,0,0 b=1,0,0,0

@@ -1,0 +1,17 @@
+<style>
+body { margin: 0; }
+figure { margin: 0; }
+.pic { float: left; width: 80px; height: 48px; background-color: navy; color: white; }
+.right { float: right; width: 64px; height: 32px; background-color: green; }
+.clear { clear: both; background-color: maroon; color: white; }
+pre { margin: 0; padding: 8px; background-color: gray; }
+</style>
+<div class="pic">L</div>
+<div class="right">R</div>
+<p>text should wrap around the floated boxes rather than starting below them,
+and it should keep flowing until the available width on each line runs out.</p>
+<p class="clear">cleared to below both floats</p>
+<pre>
+  preformatted
+    indented   with   spaces
+</pre>

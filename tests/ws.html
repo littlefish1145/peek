@@ -1,0 +1,38 @@
+<script>
+function L(s) { console.log(s); }
+var w = new WebSocket('ws://127.0.0.1:__PORT__/echo');
+L('state0 ' + w.readyState + ' url ' + w.url + ' type ' + w.binaryType);
+w.send('queued-before-open');
+var n = 0;
+w.addEventListener('open', function () {
+    L('open ' + w.readyState);
+    w.send('hello');
+    w.send(new Uint8Array([1, 2, 250]));
+});
+w.onmessage = function (e) {
+    n++;
+    if (typeof e.data === 'string') L('text ' + e.data + ' bin=' + e.binary);
+    else L('bin ' + e.data.length + ' ' + Array.prototype.join.call(e.data, '.') + ' bin=' + e.binary);
+    if (n == 3) w.close(1000, 'done');
+};
+w.onerror = function (e) { L('error ' + (e.message || '')); };
+w.onclose = function (e) {
+    L('close ' + e.code + ' [' + e.reason + '] clean=' + e.wasClean + ' state ' + w.readyState);
+    var w2 = new WebSocket('ws://127.0.0.1:__PORT__/second');
+    w2.onopen = function () { w2.send('slot-reuse'); };
+    w2.onmessage = function (e) { L('second ' + e.data); w2.close(); };
+    w2.onclose = function () { L('second close ' + w2.readyState); refused(); };
+};
+function refused() {
+    var b = new WebSocket('ws://127.0.0.1:1/nope');
+    b.onerror = function (e) { L('badstate ' + b.readyState + ' ' + (e.message || 'err')); };
+    b.onclose = function (e) { L('badclose ' + e.code + ' clean=' + e.wasClean); srverr(); };
+}
+function srverr() {
+    var s = new WebSocket('ws://127.0.0.1:__PORT2__/');
+    s.onmessage = function () { L('srv message?!'); };
+    s.onerror = function (e) { L('srverr ' + s.readyState + ' ' + (e.message || 'err')); };
+    s.onclose = function (e) { L('srvclose ' + e.code + ' clean=' + e.wasClean); L('alldone'); };
+}
+</script>
+<p>websocket</p>

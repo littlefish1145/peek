@@ -1,0 +1,37 @@
+<html>
+  <body>
+    <style>
+    - "\n"
+    <p id="many" class="k1 k2 k3 k4 k5 k6 k7 k8 k9 k10 k11 k12 k13 k14 k15 k16 k17 k18 k19 k20">
+      @ .k1.k2.k3.k4.k5.k6.k7.k8.k9.k10.k11.k12.k13.k14.k15.k16.k17.k18.k19.k20 | #many
+      = color=red#65536
+      - "id wins over 20 classes"
+    - "\n"
+    <p id="imp" class="q1 q2 q3">
+      @ .q1.q2.q3 | #imp
+      = color=orange#33555200
+      - "author !important wins over id"
+    - "\n"
+    <div class="a">
+      <p id="inl">
+        @ #inl | .a #inl
+        = color=green#16777216
+        - "inline wins over id descendant"
+    - "\n"
+    <p class="one two">
+      @ .two | .one
+      = color=navy#256
+      - "later source order wins on tie"
+    - "\n"
+    <p class="same">
+      @ .same | .same
+      = color=silver#256
+      - "last duplicate rule wins"
+    - "\n"
+    <b>
+      = font-weight=bold#-1
+      <i>
+        @ b i | i
+        = font-style=italic#-1 font-weight=normal#2
+        - "x"
+    - "\n"

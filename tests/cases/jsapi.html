@@ -1,0 +1,58 @@
+<script>
+function L(s) { console.log(s); }
+L('url ' + new URL('/a/b?x=1&y=2#h', 'https://ex.com:8080/c').href);
+var u = new URL('https://ex.com/p?x=1');
+u.searchParams.set('z', '3 4');
+u.hash = '#frag';
+L('set ' + u.href + ' sp ' + u.searchParams.toString() + ' size ' + u.searchParams.size);
+var b = 'https://ex.com/docs/index.html', rs = ['../img/a.png', 'a/b.html', './x', '?q=2', '#h', '/abs', '//other/x', 'https://o.y/z', '', 'a/b?c=1#d'];
+for (var i = 0; i < rs.length; i++) L('rel ' + rs[i] + ' -> ' + new URL(rs[i], b).href);
+var q = new URLSearchParams('a=1&b=2&a=3');
+q.sort();
+L('ups ' + q.toString() + ' get ' + q.get('a') + ' all ' + q.getAll('a').join(',') + ' has ' + q.has('zz') + ' size ' + q.size);
+var it = [];
+for (var p of new URLSearchParams('k=1&j=2')) it.push(p[0] + '=' + p[1]);
+L('iter ' + it.join(','));
+L('mm ' + matchMedia('(min-width: 100px)').matches + ' ' + matchMedia('(min-width: 999999px)').matches + ' ' + matchMedia('screen').matches + ' ' + matchMedia('print').matches);
+var mq = matchMedia('(min-width: 300px)');
+L('mql ' + mq.media + ' ' + mq.matches);
+L('vp ' + innerWidth + 'x' + innerHeight + ' screen ' + screen.width + 'x' + screen.height + ' dpr ' + devicePixelRatio + ' rs ' + document.readyState);
+var r = crypto.getRandomValues(new Uint8Array(4));
+L('rv ' + r.length + ' ' + (r[0] >= 0 && r[0] <= 255));
+L('uuid ' + /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(crypto.randomUUID()));
+L('perf ' + (performance.now() >= 0) + ' ' + (typeof performance.timeOrigin));
+var c = new AbortController(), hit = 'no';
+c.signal.addEventListener('abort', function () { hit = 'yes'; });
+L('ab0 ' + c.signal.aborted);
+c.abort();
+L('ab1 ' + c.signal.aborted + ' listener ' + hit);
+addEventListener('load', function () { L('load readyState ' + document.readyState); });
+addEventListener('domcontentloaded', function () { L('dcl'); });
+addEventListener('ping', function (e) { L('custom ' + e.detail); });
+dispatchEvent(new CustomEvent('ping', { detail: 7 }));
+var x = new XMLHttpRequest();
+x.open('GET', '/never');
+x.abort();
+x.send('body');
+L('xhr ' + x.readyState + ' ' + x.status);
+var bl = new Blob(['ab', new Uint8Array([228, 184, 173]), 'c'], { type: 'text/plain' });
+L('blob ' + bl.size + ' ' + bl.type + ' slice ' + bl.slice(1, 3).size + ' tail ' + bl.slice(-1).size);
+bl.text().then(function (t) { L('blobtext ' + t.length + ' ' + t); });
+bl.arrayBuffer().then(function (b) { L('blobab ' + b.byteLength); });
+var fr = new FileReader();
+fr.onload = function () { L('fr ' + typeof fr.result + ' ' + fr.result.length + ' done ' + (fr.readyState == FileReader.DONE)); };
+fr.readAsText(bl);
+var fr2 = new FileReader();
+fr2.onload = function () { L('fr2 ' + fr2.result); };
+fr2.readAsDataURL(new Uint8Array([1, 2, 250]));
+var fr3 = new FileReader();
+fr3.onload = function () { L('fr3 ' + fr3.result.byteLength); };
+fr3.readAsArrayBuffer('xyz');
+var ou = URL.createObjectURL(bl);
+L('objurl ' + ou.slice(0, 6) + ' known ' + !!__bloburl(ou));
+URL.revokeObjectURL(ou);
+L('revoked ' + !!__bloburl(ou));
+var f = new File(['x'], 'n.txt', { type: 'text/plain' });
+L('file ' + f.name + ' ' + f.size + ' isblob ' + (f instanceof Blob) + ' type ' + f.type);
+</script>
+<p>js api surface</p>

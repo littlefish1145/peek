@@ -1,4 +1,5 @@
 #include "peek.h"
+#include "ws.h"
 #include <time.h>
 
 static JSRuntime *RT;
@@ -638,7 +639,14 @@ static JSValue j_ct(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av
     return JS_UNDEFINED;
 }
 
+static void ws_tick(void);
+static int ws_live(void);
+static void es_tick(void);
+static int es_live(void);
+
 int js_pump(void) {
+    ws_tick();
+    es_tick();
     int total = NEED_RL;
     NEED_RL = 0;
     for (int round = 0; round < 64; round++) {
@@ -687,6 +695,7 @@ double js_next_wait(void) {
         double w = TM[i].when - now;
         if (best < 0 || w < best) best = w;
     }
+    if ((ws_live() || es_live()) && (best < 0 || best > 50)) best = 50;
     if (best < 0) return -1;
     return best;
 }
@@ -803,9 +812,30 @@ static const char BOOT[] =
     "Object.defineProperty(globalThis.document,'body',{get:function(){return _body()}});"
     "globalThis.window=globalThis;"
     "globalThis.self=globalThis;"
-    "globalThis.addEventListener=function(){};"
-    "globalThis.removeEventListener=function(){};"
-    "globalThis.navigator={userAgent:'peek'};"
+    "var WL={};"
+    "function wadd(t,f,o){if(typeof f!='function')return;"
+    "(WL[t]=WL[t]||[]).push({f:f,once:!!(o&&o.once)})};"
+    "function wdel(t,f){var l=WL[t];if(!l)return;"
+    "for(var i=0;i<l.length;i++)if(l[i].f===f){l.splice(i,1);return}};"
+    "globalThis.addEventListener=function(t,f,o){wadd(String(t),f,o)};"
+    "globalThis.removeEventListener=function(t,f){wdel(String(t),f)};"
+    "var RS='loading';"
+    "globalThis.__winFire=function(t,e){"
+    "if(t=='domcontentloaded'&&RS=='loading')RS='interactive';"
+    "if(t=='load')RS='complete';"
+    "var l=WL[t];if(!l)return;"
+    "if(!e){e={type:t,target:globalThis,timeStamp:Date.now()}}"
+    "else{if(e.type===undefined)e.type=t;if(!e.target)e.target=globalThis}"
+    "var cp=l.slice();"
+    "var h=globalThis['on'+t];"
+    "if(typeof h=='function')h.call(globalThis,e);"
+    "for(var i=0;i<cp.length;i++){"
+    "if(cp[i].once)wdel(t,cp[i].f);"
+    "cp[i].f(e)}};"
+    "globalThis.navigator={userAgent:'peek',appVersion:'peek',appName:'Netscape',"
+    "product:'Gecko',platform:'linux',language:'en-US',languages:['en-US'],"
+    "onLine:true,cookieEnabled:true,javaEnabled:function(){return false},"
+    "sendBeacon:function(){return true}};"
     "globalThis.DOMException=function(m,n){var e=new Error(m===undefined?'':String(m));"
     "e.name=n===undefined?'Error':String(n);return e};"
     "globalThis.Element=function(){};"
@@ -838,8 +868,9 @@ static const char BOOT[] =
     "{get:function(){return _qs('html')||_body()}});"
     "Object.defineProperty(globalThis.document,'head',"
     "{get:function(){return _qs('head')||_body()}});"
-    "globalThis.document.addEventListener=function(){};"
-    "globalThis.document.removeEventListener=function(){};"
+    "globalThis.document.addEventListener=globalThis.addEventListener;"
+    "globalThis.document.removeEventListener=globalThis.removeEventListener;"
+    "Object.defineProperty(globalThis.document,'readyState',{get:function(){return RS}});"
     "globalThis.document.getElementsByTagName=function(t){"
     "return _qsa(String(t).toLowerCase())};"
     "globalThis.document.getElementById=function(i){return _gid(String(i))};"
@@ -905,15 +936,17 @@ static const char BOOT[] =
     "LO.reload=function(){};LO.replace=function(){};LO.assign=function(){};"
     "LO.toString=function(){return LO.href};"
     "globalThis.location=LO;globalThis.document.location=LO;"
-    "function uparts(h){"
+    "function uparts(h,R){"
+    "var RF=R||LO;"
     "var m=String(h).match(/^(?:([a-zA-Z][a-zA-Z0-9+.-]*):)?(?:(\\/\\/)([^\\/?#]*))?([^?#]*)(\\?[^#]*)?(#.*)?$/);"
-    "if(!m)return {protocol:LO.protocol,host:LO.host,hostname:LO.hostname,"
-    "port:LO.port,pathname:'/',search:'',hash:'',href:LO.href,origin:LO.origin};"
-    "var sch=m[1]||LO.protocol,rel=!!m[2],hh=m[3],pa=m[4]||'',se=m[5]||'',ha=m[6]||'';"
-    "if(rel){"
-    "if(pa===''){pa=LO.pathname;se=se||LO.search;ha=ha||LO.hash}"
+    "if(!m)return {protocol:RF.protocol,host:RF.host,hostname:RF.hostname,"
+    "port:RF.port,pathname:'/',search:'',hash:'',href:RF.href,origin:RF.origin};"
+    "var sch=m[1]||RF.protocol,rel=!!m[2],hh=m[3],pa=m[4]||'',se=m[5]||'',ha=m[6]||'';"
+    "if(sch.charAt(sch.length-1)!==':')sch+=':';"
+    "if(!rel&&!m[1]){"
+    "if(pa===''){pa=RF.pathname||'/';se=se||RF.search;ha=ha||RF.hash}"
     "else if(pa.charAt(0)!=='/'&&pa.charAt(0)!=='?'){"
-    "var bp=LO.pathname||'/';"
+    "var bp=RF.pathname||'/';"
     "var dir=bp.slice(0,bp.lastIndexOf('/')+1)||'/';"
     "var seg=(dir+pa).split('/'),out=[];"
     "for(var i=0;i<seg.length;i++){var s=seg[i];"
@@ -924,7 +957,7 @@ static const char BOOT[] =
     "var pi=hh?hh.lastIndexOf(':'):-1;"
     "var hn=pi>0?hh.slice(0,pi):(hh||'');"
     "var pt=pi>0&&hh.slice(pi+1)?hh.slice(pi+1):'';"
-    "var hp=hh?(pt?hn+':'+pt:hn):LO.host;"
+    "var hp=hh?(pt?hn+':'+pt:hn):RF.host;"
     "var abs=sch+(hp?'//'+hp:'')+pa+se+ha;"
     "return {protocol:sch,host:hp,hostname:hn,port:pt,pathname:pa||'/',"
     "search:se,hash:ha,href:abs,origin:sch+'//'+hp}};"
@@ -947,30 +980,56 @@ static const char BOOT[] =
     "for(var i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);"
     "try{return decodeURIComponent(escape(s))}catch(e){return s}}"
     "return String(u8)}};"
+    "function phdr(s){"
+    "var o={};if(!s)return o;var ls=s.split(/\\r?\\n/);"
+    "for(var i=0;i<ls.length;i++){var j=ls[i].indexOf(':');"
+    "if(j>0)o[ls[i].slice(0,j).toLowerCase()]=ls[i].slice(j+1).trim()}"
+    "return o}"
+    "function hmerge(h){"
+    "var o={};"
+    "if(!h)return o;"
+    "if(Array.isArray(h)||h.length!==undefined){"
+    "for(var i=0;i<h.length;i++){var p=h[i];if(p&&p.length>=2)o[String(p[0])]=String(p[1])}}"
+    "else for(var k in h)o[k]=String(h[k]);"
+    "return o}"
+    "function bodyof(b,h){"
+    "if(b instanceof FormData){var s=b._send();h['Content-Type']=s.ct;return s.data}"
+    "if(b instanceof Blob){h['Content-Type']=b.type||'application/octet-stream';return bview(b).buffer}"
+    "if(b instanceof ArrayBuffer){h['Content-Type']='application/octet-stream';return b}"
+    "if(b&&b.buffer instanceof ArrayBuffer){"
+    "h['Content-Type']='application/octet-stream';return wsab(b)}"
+    "if(b===undefined||b===null)return null;"
+    "if(typeof b=='string'){h['Content-Type']='text/plain;charset=UTF-8';return b}"
+    "h['Content-Type']='text/plain;charset=UTF-8';return String(b)}"
     "function XHR(){this.readyState=0;this.status=0;this.statusText='';"
     "this.response='';this.responseText='';this.responseType='';"
     "this.responseXML=null;this.timeout=0;this.withCredentials=false;"
     "this.onload=this.onerror=this.onabort=this.onreadystatechange=null;"
-    "this.upgrade=null;this._h={};this._hd={}}"
+    "this.upgrade=null;this._h={};this._hd={};this._rh={}}"
     "XHR.prototype.open=function(m,u){this._m=String(m);this._u=String(u);"
     "this.readyState=1};"
     "XHR.prototype.setRequestHeader=function(k,v){this._hd[String(k)]=String(v)};"
-    "XHR.prototype.getAllResponseHeaders=function(){return ''};"
-    "XHR.prototype.getResponseHeader=function(){return null};"
-    "XHR.prototype.abort=function(){};"
+    "XHR.prototype.getAllResponseHeaders=function(){"
+    "var o='';for(var k in this._rh)o+=k+': '+this._rh[k]+'\\r\\n';return o};"
+    "XHR.prototype.getResponseHeader=function(k){"
+    "var v=this._rh[String(k).toLowerCase()];return v===undefined?null:v};"
+    "XHR.prototype.abort=function(){this._ab=true;"
+    "this.readyState=0;this.status=0};"
     "XHR.prototype.overrideMimeType=function(){};"
     "XHR.prototype.addEventListener=function(t,f){"
     "(this._h[t]=this._h[t]||[]).push(f)};"
     "XHR.prototype.removeEventListener=function(t,f){var ls=this._h[t];"
     "if(ls){var i=ls.indexOf(f);if(i>=0)ls.splice(i,1)}};"
     "XHR.prototype.send=function(b){var self=this;"
-    "var r=_http(self._m,self._u,"
-    "b===undefined||b===null?null:String(b));"
+    "if(self._ab)return;"
+    "var h=hmerge(self._hd),d=bodyof(b,h);"
+    "var r=_http(self._m,self._u,d,h);"
     "self.readyState=4;"
     "self.status=r.status;"
     "self.statusText=r.ok?'OK':'';"
     "self.responseText=self.response=r.body;"
-    "self.responseURL=self._u;"
+    "self.responseURL=r.url;"
+    "self._rh=phdr(r.headers);"
     "Promise.resolve().then(function(){"
     "var ev={target:self,type:'load',loaded:1,total:1,timeStamp:Date.now()};"
     "if(self.onreadystatechange)self.onreadystatechange(ev);"
@@ -984,14 +1043,23 @@ static const char BOOT[] =
     "var ls3=self._h.error;"
     "if(ls3)for(var k=0;k<ls3.length;k++)ls3[k](ev)}})};"
     "globalThis.XMLHttpRequest=XHR;"
+    "function hobj(m){"
+    "return {get:function(k){var v=m[String(k).toLowerCase()];"
+    "return v===undefined?null:v},"
+    "has:function(k){return m[String(k).toLowerCase()]!==undefined},"
+    "forEach:function(f,t){for(var k in m)f.call(t,m[k],k,this)},"
+    "keys:function(){return Object.keys(m)},"
+    "values:function(){var o=[];for(var k in m)o.push(m[k]);return o},"
+    "entries:function(){var o=[];for(var k in m)o.push([k,m[k]]);return o}}}"
     "globalThis.fetch=function(u,o){o=o||{};"
     "return new Promise(function(res,rej){"
-    "var r=_http(String(o.method||'GET'),String(u),"
-    "o.body===undefined||o.body===null?null:String(o.body));"
+    "var ab=abrt(o.signal);if(ab){rej(ab);return}"
+    "var h=hmerge(o.headers),d=bodyof(o.body,h);"
+    "var r=_http(String(o.method||'GET'),String(u),d,h);"
+    "ab=abrt(o.signal);if(ab){rej(ab);return}"
     "if(!r.ok){rej(new TypeError('Failed to fetch'));return}"
-    "res({ok:true,status:r.status,statusText:'OK',url:String(u),"
-    "headers:{get:function(){return null},has:function(){return false},"
-    "forEach:function(){}},"
+    "var m=phdr(r.headers);"
+    "res({ok:true,status:r.status,statusText:'OK',url:r.url,headers:hobj(m),"
     "text:function(){return Promise.resolve(r.body)},"
     "json:function(){try{return Promise.resolve(JSON.parse(r.body))}"
     "catch(e){return Promise.reject(e)}}})})};"
@@ -1007,6 +1075,356 @@ static const char BOOT[] =
     "P.prototype.start=function(){};P.prototype.close=function(){};"
     "var a=new P(),b=new P();a._peer=b;b._peer=a;"
     "this.port1=a;this.port2=b};"
+    "Object.defineProperty(globalThis,'innerWidth',{get:function(){return _vw()}});"
+    "Object.defineProperty(globalThis,'innerHeight',{get:function(){return _vh()}});"
+    "Object.defineProperty(globalThis,'outerWidth',{get:function(){return _vw()}});"
+    "Object.defineProperty(globalThis,'outerHeight',{get:function(){return _vh()}});"
+    "globalThis.devicePixelRatio=1;"
+    "globalThis.screen={left:0,top:0,"
+    "get width(){return _vw()},get height(){return _vh()},"
+    "get availWidth(){return _vw()},get availHeight(){return _vh()},"
+    "get colorDepth(){return 24},get pixelDepth(){return 24},"
+    "orientation:{get type(){return _vw()>=_vh()?'landscape-primary':'portrait-primary'},"
+    "get angle(){return 0},lock:function(){},unlock:function(){}}};"
+    "globalThis.performance={timeOrigin:Date.now(),now:function(){return _now()}};"
+    "function hx(b){var h='';for(var i=0;i<b.length;i++){var x=b[i].toString(16);"
+    "h+=x.length<2?'0'+x:x}return h}"
+    "globalThis.crypto={getRandomValues:function(a){return _rgv(a)},"
+    "randomUUID:function(){var b=new Uint8Array(16);_rgv(b);"
+    "b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;var s=hx(b);"
+    "return s.slice(0,8)+'-'+s.slice(8,12)+'-'+s.slice(12,16)+'-'+s.slice(16,20)+'-'+s.slice(20)}};"
+    "var MQL=[];"
+    "function MML(q){this.media=String(q);this._m=_mm(this.media);"
+    "this.onchange=null;this._h=[]}"
+    "MML.prototype.addListener=function(f){if(typeof f=='function')this._h.push(f)};"
+    "MML.prototype.removeListener=function(f){var i=this._h.indexOf(f);"
+    "if(i>=0)this._h.splice(i,1)};"
+    "MML.prototype.addEventListener=function(t,f){if(String(t)=='change')this.addListener(f)};"
+    "MML.prototype.removeEventListener=function(t,f){if(String(t)=='change')this.removeListener(f)};"
+    "MML.prototype.dispatchEvent=function(e){e=e||{};e.target=this;"
+    "if(typeof this.onchange=='function')this.onchange(e);"
+    "var cp=this._h.slice();for(var i=0;i<cp.length;i++)cp[i](e);return true};"
+    "Object.defineProperty(MML.prototype,'matches',"
+    "{get:function(){return _mm(this.media)}});"
+    "globalThis.matchMedia=function(q){var o=new MML(q);MQL.push(o);return o};"
+    "function mqlTick(){for(var i=0;i<MQL.length;i++){var o=MQL[i];"
+    "var m=_mm(o.media);if(m!==o._m){o._m=m;"
+    "o.dispatchEvent({type:'change',matches:m,media:o.media})}}};"
+    "globalThis.Event=function(t,o){o=o||{};this.type=String(t);"
+    "this.bubbles=!!o.bubbles;this.cancelable=!!o.cancelable;"
+    "this.composed=!!o.composed;this.defaultPrevented=false;this.timeStamp=Date.now()};"
+    "Event.prototype.preventDefault=function(){this.defaultPrevented=true};"
+    "Event.prototype.stopPropagation=function(){};"
+    "Event.prototype.stopImmediatePropagation=function(){};"
+    "globalThis.CustomEvent=function(t,o){o=o||{};Event.call(this,t,o);this.detail=o.detail};"
+    "CustomEvent.prototype=Object.create(Event.prototype);"
+    "function dec(s){s=String(s).split('+').join(' ');"
+    "try{return decodeURIComponent(s)}catch(e){return s}}"
+    "function enc(s){try{return encodeURIComponent(String(s))}catch(e){return String(s)}}"
+    "function UPS(init){var L=[];"
+    "function push(k,v){L.push([String(k),String(v)])}"
+    "if(typeof init=='string'){var st=String(init);if(st.charAt(0)=='?')st=st.slice(1);"
+    "var ps=st.split('&');for(var i=0;i<ps.length;i++){var kv=ps[i];if(!kv)continue;"
+    "var j=kv.indexOf('=');push(dec(j<0?kv:kv.slice(0,j)),j<0?'':dec(kv.slice(j+1)))}}"
+    "else if(init&&init.length!==undefined&&typeof init!='string'){"
+    "for(var q=0;q<init.length;q++){var pr=init[q];"
+    "if(pr&&pr.length>=2)push(pr[0],pr[1])}}"
+    "else if(init&&typeof init.forEach=='function')init.forEach(function(v,k){push(k,v)});"
+    "else if(init)for(var k2 in init)push(k2,init[k2]);"
+    "this.append=function(k,v){push(k,v)};"
+    "this.delete=function(k){k=String(k);"
+    "for(var i=L.length-1;i>=0;i--)if(L[i][0]===k)L.splice(i,1)};"
+    "this.get=function(k){k=String(k);for(var i=0;i<L.length;i++)if(L[i][0]===k)return L[i][1];"
+    "return null};"
+    "this.getAll=function(k){k=String(k);var o=[];"
+    "for(var i=0;i<L.length;i++)if(L[i][0]===k)o.push(L[i][1]);return o};"
+    "this.has=function(k){return this.get(k)!==null};"
+    "this.set=function(k,v){k=String(k);"
+    "for(var i=0;i<L.length;i++)if(L[i][0]===k){L[i][1]=String(v);"
+    "for(var j=i+1;j<L.length;j++)if(L[j][0]===k){L.splice(j,1);j--}return}"
+    "push(k,v)};"
+    "this.sort=function(){L.sort(function(a,b){return a[0]<b[0]?-1:a[0]>b[0]?1:0})};"
+    "this.forEach=function(f,t){for(var i=0;i<L.length;i++)f.call(t,L[i][1],L[i][0],this)};"
+    "this.keys=function(){return L.map(function(p){return p[0]})};"
+    "this.values=function(){return L.map(function(p){return p[1]})};"
+    "this.entries=function(){return L.map(function(p){return [p[0],p[1]]})};"
+    "this[Symbol.iterator]=function(){var i=0;"
+    "return {next:function(){if(i>=L.length)return {value:undefined,done:true};"
+    "var p=L[i++];return {value:[p[0],p[1]],done:false}}}};"
+    "Object.defineProperty(this,'size',{get:function(){return L.length}});"
+    "this.toString=function(){var o=[];"
+    "for(var i=0;i<L.length;i++)o.push(enc(L[i][0])+'='+enc(L[i][1]));return o.join('&')};"
+    "}"
+    "globalThis.URLSearchParams=UPS;"
+    "function URL(u,b){var self=this;"
+    "var Q=uparts(String(u),b===undefined?undefined:uparts(String(b)));"
+    "var sp=new UPS(Q.search);self.searchParams=sp;"
+    "function sq(){var s=sp.toString();return s?'?'+s:''}"
+    "function mk(){return Q.protocol+(Q.host?'//'+Q.host:'')+Q.pathname+sq()+Q.hash}"
+    "function get(k){return function(){return k=='href'?mk():"
+    "k=='search'?sq():Q[k]}}"
+    "function set(k){return function(v){var s=String(v);"
+    "if(k=='href'){var np=uparts(s,Q);for(var x in np)Q[x]=np[x];sp=new UPS(Q.search);"
+    "self.searchParams=sp}"
+    "else if(k=='search'){Q.search=s.charAt(0)=='?'?s:'?'+s;sp=new UPS(s);"
+    "self.searchParams=sp}"
+    "else Q[k]=s}}"
+    "var KS=['href','protocol','host','hostname','port','pathname','search','hash','origin'];"
+    "for(var i=0;i<KS.length;i++)"
+    "Object.defineProperty(self,KS[i],{get:get(KS[i]),set:set(KS[i]),enumerable:true});"
+    "this.toString=function(){return mk()};"
+    "this.toJSON=function(){return mk()};"
+    "}"
+    "globalThis.URL=URL;"
+    "function ABS(){this.aborted=false;this.reason=null;this.onabort=null;this._h=[]}"
+    "ABS.prototype.addEventListener=function(t,f){if(String(t)=='abort')this._h.push(f)};"
+    "ABS.prototype.removeEventListener=function(t,f){var i=this._h.indexOf(f);"
+    "if(i>=0)this._h.splice(i,1)};"
+    "ABS.prototype.throwIfAborted=function(){if(this.aborted)"
+    "throw new DOMException('Aborted','AbortError')};"
+    "globalThis.AbortSignal=ABS;"
+    "globalThis.AbortController=function(){var s=new ABS();this.signal=s;"
+    "this.abort=function(r){if(s.aborted)return;s.aborted=true;"
+    "s.reason=r||new DOMException('Aborted','AbortError');"
+    "var ev={type:'abort',target:s};if(typeof s.onabort=='function')s.onabort(ev);"
+    "var cp=s._h.slice();for(var i=0;i<cp.length;i++)cp[i](ev)}};"
+    "function abrt(s){return s&&s.aborted?new DOMException('Aborted','AbortError'):null}"
+    "globalThis.dispatchEvent=function(e){"
+    "globalThis.__winFire(e&&e.type?String(e.type):String(e),e);return true};"
+    "globalThis.document.dispatchEvent=globalThis.dispatchEvent;"
+    "globalThis.__mqlTick=mqlTick;"
+    "var WFB=globalThis.__winFire;"
+    "globalThis.__winFire=function(t,e){"
+    "if(t=='resize')mqlTick();"
+    "WFB(t,e)};"
+    "var WSO={};"
+    "function wsresolve(u){"
+    "u=String(u);if(/^wss?:\\/\\//i.test(u))return u;"
+    "var p=uparts(u);return (p.protocol=='https:'?'wss://':'ws://')+p.host+p.pathname+p.search+p.hash}"
+    "function wsab(d){"
+    "if(!d||typeof d=='string')return null;"
+    "if(d instanceof ArrayBuffer)return d;"
+    "if(d.buffer instanceof ArrayBuffer){"
+    "var v=new Uint8Array(d.buffer,d.byteOffset||0,"
+    "d.byteLength!==undefined?d.byteLength:d.length);"
+    "var c=new Uint8Array(v.length);c.set(v);return c.buffer}"
+    "return null}"
+    "function wsemit(w,t,e){e=e||{};e.type=t;e.target=w;"
+    "if(typeof w['on'+t]=='function')w['on'+t](e);"
+    "var l=w._h[t];if(l){var cp=l.slice();"
+    "for(var i=0;i<cp.length;i++)cp[i](e)}}"
+    "function wflush(w){var q=w._q;w._q=[];"
+    "for(var i=0;i<q.length;i++)if(!_wssend(w._id,q[i][1],q[i][0]))return}"
+    "function WS(u,p){"
+    "var self=this;"
+    "this.url=wsresolve(u);this.readyState=0;this.bufferedAmount=0;"
+    "this.protocol=typeof p=='string'?p:(p&&p.length?String(p[0]):'');"
+    "this.extensions='';this.binaryType='arraybuffer';this._id=-1;"
+    "this.onopen=this.onmessage=this.onerror=this.onclose=null;this._h={};this._q=[];"
+    "var id=_ws(this.url);"
+    "if(id<0){this.readyState=3;"
+    "Promise.resolve().then(function(){"
+    "wsemit(self,'error',{message:'websocket connect failed'});"
+    "wsemit(self,'close',{code:1006,reason:'',wasClean:false})});return}"
+    "this._id=id;WSO[id]=this}"
+    "WS.prototype.addEventListener=function(t,f){if(f)"
+    "(this._h[String(t)]=this._h[String(t)]||[]).push(f)};"
+    "WS.prototype.removeEventListener=function(t,f){var l=this._h[String(t)];"
+    "if(l){var i=l.indexOf(f);if(i>=0)l.splice(i,1)}};"
+    "WS.prototype.dispatchEvent=function(e){wsemit(this,e&&e.type,e);return true};"
+    "WS.prototype.send=function(d){"
+    "if(this.readyState>1)throw new DOMException('send on closed socket','InvalidStateError');"
+    "var bin=wsab(d),v=bin===null?(d===undefined||d===null?'':String(d)):bin;"
+    "if(this.readyState!=1){this._q.push([bin?1:0,v]);return}"
+    "if(!_wssend(this._id,v,bin?1:0))throw new DOMException('send failed','InvalidStateError')};"
+    "WS.prototype.close=function(c,r){"
+    "if(this.readyState>2)return;"
+    "var self=this,id=this._id;"
+    "if(this.readyState<2&&id>=0){delete WSO[id];this.readyState=3;"
+    "_wsclose(id,c?c:1000,r?String(r):'');"
+    "Promise.resolve().then(function(){"
+    "wsemit(self,'close',{code:c?c:1000,reason:r?String(r):'',wasClean:true})});return}"
+    "if(id>=0)_wsclose(id,c?c:1000,r?String(r):'')}"
+    ";WS.CONNECTING=0;WS.OPEN=1;WS.CLOSING=2;WS.CLOSED=3;"
+    "WS.prototype.CONNECTING=0;WS.prototype.OPEN=1;WS.prototype.CLOSING=2;WS.prototype.CLOSED=3;"
+    "globalThis.WebSocket=WS;"
+    "globalThis.__wsFire=function(i,ty,a,b,dying){"
+    "var w=WSO[i];if(!w)return;"
+    "if(ty==0){w.readyState=b==undefined?1:b;wflush(w);wsemit(w,'open',{})}"
+    "else if(ty==1){"
+    "wsemit(w,'message',{data:a,binary:!!b,lastEventId:false,origin:w.url,ports:[]})}"
+    "else if(ty==2){delete WSO[i];w.readyState=3;"
+    "wsemit(w,'close',{code:b|0,reason:a||'',wasClean:(b|0)==1000})}"
+    "else{delete WSO[i];w.readyState=3;"
+    "wsemit(w,'error',{message:a||'websocket error'});"
+    "wsemit(w,'close',{code:1006,reason:a||'',wasClean:false})}};"
+    "var ESO={};"
+    "function esemit(e,t,ev){ev=ev||{};ev.type=t;ev.target=e;"
+    "if(typeof e['on'+t]=='function')e['on'+t](ev);"
+    "var l=e._h[t];if(l){var cp=l.slice();"
+    "for(var i=0;i<cp.length;i++)cp[i](ev)}}"
+    "function EventSource(u,o){"
+    "this.url=String(u);this.readyState=0;this._id=-1;this._h={};"
+    "this.lastEventId='';this.withCredentials=!!(o&&o.withCredentials);"
+    "this.onopen=this.onmessage=this.onerror=null;"
+    "var id=_es(this.url);"
+    "if(id<0){this.readyState=2;var self=this;"
+    "Promise.resolve().then(function(){esemit(self,'error',{message:'eventsource connect failed'})});return}"
+    "this._id=id;ESO[id]=this}"
+    "EventSource.prototype.addEventListener=function(t,f){if(f)"
+    "(this._h[String(t)]=this._h[String(t)]||[]).push(f)};"
+    "EventSource.prototype.removeEventListener=function(t,f){var l=this._h[String(t)];"
+    "if(l){var i=l.indexOf(f);if(i>=0)l.splice(i,1)}};"
+    "EventSource.prototype.dispatchEvent=function(ev){esemit(this,ev&&ev.type,ev);return true};"
+    "EventSource.prototype.close=function(){"
+    "if(this._id>=0){delete ESO[this._id];_esclose(this._id);this._id=-1}"
+    "this.readyState=2};"
+    "EventSource.CONNECTING=0;EventSource.OPEN=1;EventSource.CLOSED=2;"
+    "EventSource.prototype.CONNECTING=0;EventSource.prototype.OPEN=1;EventSource.prototype.CLOSED=2;"
+    "globalThis.EventSource=EventSource;"
+    "function esorg(u){var i=u.indexOf('//');if(i<0)return '';"
+    "var j=u.indexOf('/',i+2);return j<0?u:u.slice(0,j)}"
+    "globalThis.__esFire=function(i,ch,end){"
+    "var e=ESO[i];if(!e)return;"
+    "if(end){delete ESO[i];e._id=-1;"
+    "if(e.readyState!=2){e.readyState=2;esemit(e,'error',{message:'sse stream ended'})}return}"
+    "if(e.readyState==0){e.readyState=1;esemit(e,'open',{})}"
+    "var lines=ch.split('\\n'),data=[],typ='',id=e.lastEventId;"
+    "for(var k=0;k<lines.length;k++){var ln=lines[k];"
+    "if(ln.charAt(ln.length-1)=='\\r')ln=ln.slice(0,-1);"
+    "if(!ln||ln.charAt(0)==':')continue;"
+    "var c=ln.indexOf(':');var f=c<0?ln:ln.slice(0,c);var v=c<0?'':ln.slice(c+1);"
+    "if(v.charAt(0)==' ')v=v.slice(1);"
+    "if(f=='data')data.push(v);else if(f=='event')typ=v;else if(f=='id')id=v}"
+    "if(!data.length)return;"
+    "e.lastEventId=id;"
+    "esemit(e,typ||'message',{data:data.join('\\n'),lastEventId:id,"
+    "origin:esorg(e.url)})};"
+    "function bview(d){"
+    "if(typeof d=='string')return new TextEncoder().encode(d);"
+    "if(d instanceof Blob)return new Uint8Array(d._b);"
+    "if(d instanceof ArrayBuffer)return new Uint8Array(d);"
+    "if(d&&d.buffer instanceof ArrayBuffer)"
+    "return new Uint8Array(d.buffer,d.byteOffset||0,"
+    "d.byteLength!==undefined?d.byteLength:d.length);"
+    "if(d&&typeof d=='object'&&d.length!==undefined&&!Array.isArray(d))return new Uint8Array(d);"
+    "return new Uint8Array(0)}"
+    "function Blob(ps,o){"
+    "var parts=[],tot=0;"
+    "if(ps!=null){var ar=typeof ps=='string'||ps.length===undefined?[ps]:ps;"
+    "for(var i=0;i<ar.length;i++){var u=bview(ar[i]);parts.push(u);tot+=u.length}}"
+    "var b=new Uint8Array(tot),k=0;"
+    "for(var j=0;j<parts.length;j++){b.set(parts[j],k);k+=parts[j].length}"
+    "this._b=b.buffer;this.size=tot;this.type=String((o&&o.type)||'')}"
+    "Blob.prototype.slice=function(s,e,t){"
+    "var n=this.size,a=s|0;if(a<0)a=Math.max(0,n+a);a=Math.min(a,n);"
+    "var z=e===undefined?n:(e|0);if(z<0)z=Math.max(0,n+z);z=Math.min(z,n);"
+    "if(z<a)z=a;"
+    "var src=new Uint8Array(this._b),cut=src.subarray(a,z),o2=new Uint8Array(cut.length);"
+    "o2.set(cut);var b=new Blob([],{type:t?t.type:''});b._b=o2.buffer;b.size=o2.length;return b};"
+    "Blob.prototype.text=function(){var d=this;"
+    "return Promise.resolve(new TextDecoder().decode(new Uint8Array(d._b)))};"
+    "Blob.prototype.arrayBuffer=function(){var d=this,a=new Uint8Array(d.size);"
+    "a.set(new Uint8Array(d._b));return Promise.resolve(a.buffer)};"
+    "globalThis.Blob=Blob;"
+    "function File(ps,name,o){Blob.call(this,ps,o);"
+    "this.name=String(name==null?'':name);this.lastModified=Number(o&&o.lastModified)||Date.now();"
+    "this.webkitRelativePath=''}"
+    "File.prototype=Object.create(Blob.prototype);"
+    "globalThis.File=File;"
+    "function FD(){"
+    "this._e=[];var r=crypto.getRandomValues(new Uint8Array(8)),s='';"
+    "for(var i=0;i<8;i++){var x=r[i].toString(16);s+=x.length<2?'0'+x:x}"
+    "this._b='----peekFormBoundary'+s}"
+    "function fdv(v){"
+    "if(typeof v=='string')return v;"
+    "if(v instanceof Blob)return v;"
+    "return String(v===undefined||v===null?'':v)}"
+    "FD.prototype.append=function(k,v){this._e.push([String(k),fdv(v)])};"
+    "FD.prototype.set=function(k,v){k=String(k);v=fdv(v);var f=-1;"
+    "for(var i=0;i<this._e.length;i++)if(this._e[i][0]===k){"
+    "if(f<0){this._e[i][1]=v;f=i}else{this._e.splice(i,1);i--}}"
+    "if(f<0)this._e.push([k,v])};"
+    "FD.prototype.get=function(k){k=String(k);"
+    "for(var i=0;i<this._e.length;i++)if(this._e[i][0]===k)return this._e[i][1];"
+    "return null};"
+    "FD.prototype.getAll=function(k){k=String(k);var o=[];"
+    "for(var i=0;i<this._e.length;i++)if(this._e[i][0]===k)o.push(this._e[i][1]);"
+    "return o};"
+    "FD.prototype.has=function(k){return this.get(k)!==null};"
+    "FD.prototype.delete=function(k){k=String(k);"
+    "for(var i=this._e.length-1;i>=0;i--)if(this._e[i][0]===k)this._e.splice(i,1)};"
+    "FD.prototype.forEach=function(f,t){for(var i=0;i<this._e.length;i++)"
+    "f.call(t,this._e[i][1],this._e[i][0],this)};"
+    "FD.prototype.keys=function(){return this._e.map(function(p){return p[0]})};"
+    "FD.prototype.values=function(){return this._e.map(function(p){return p[1]})};"
+    "FD.prototype.entries=function(){return this._e.map(function(p){return [p[0],p[1]]})};"
+    "Object.defineProperty(FD.prototype,'size',{get:function(){return this._e.length}});"
+    "FD.prototype._files=function(){"
+    "for(var i=0;i<this._e.length;i++)if(this._e[i][1] instanceof Blob)return 1;"
+    "return 0};"
+    "FD.prototype._type=function(){return this._files()?"
+    "'multipart/form-data; boundary='+this._b:'application/x-www-form-urlencoded;charset=UTF-8'};"
+    "FD.prototype._send=function(){"
+    "if(!this._files()){var o=[];"
+    "for(var i=0;i<this._e.length;i++)"
+    "o.push(enc(this._e[i][0])+'='+enc(String(this._e[i][1])).replace(/%20/g,'+'));"
+    "return {ct:this._type(),data:o.join('&')}}"
+    "var T=new TextEncoder(),out=[],n=0;"
+    "for(var i=0;i<this._e.length;i++){"
+    "var k=this._e[i][0],v=this._e[i][1];"
+    "var h='--'+this._b+'\\r\\nContent-Disposition: form-data; name=\"'+k+'\"';"
+    "if(v instanceof Blob)"
+    "h+='; filename=\"'+(v.name||'blob')+'\"\\r\\nContent-Type: '+(v.type||'application/octet-stream');"
+    "h+='\\r\\n\\r\\n';"
+    "var a=T.encode(h),bv=v instanceof Blob?bview(v):T.encode(String(v)),"
+    "cr=T.encode('\\r\\n');"
+    "out.push(a,bv,cr);n+=a.length+bv.length+cr.length}"
+    "var en=T.encode('--'+this._b+'--\\r\\n');out.push(en);n+=en.length;"
+    "var m=new Uint8Array(n),p=0;"
+    "for(var i=0;i<out.length;i++){m.set(out[i],p);p+=out[i].length}"
+    "return {ct:this._type(),data:m.buffer}};"
+    "globalThis.FormData=FD;"
+    "var AB64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';"
+    "function b64(u){"
+    "var s='';"
+    "for(var i=0;i<u.length;i+=3){"
+    "var a=u[i],b=i+1<u.length?u[i+1]:0,c=i+2<u.length?u[i+2]:0;"
+    "var n=(a<<16)|(b<<8)|c;"
+    "s+=AB64[(n>>18)&63]+AB64[(n>>12)&63];"
+    "s+=i+1<u.length?AB64[(n>>6)&63]:'=';"
+    "s+=i+2<u.length?AB64[n&63]:'='}"
+    "return s}"
+    "function FR(){"
+    "this.result=null;this.error=null;this.readyState=0;"
+    "this.onload=this.onerror=this.onloadstart=this.onloadend=this.onprogress=null;this._h={}}"
+    "FR.prototype.addEventListener=function(t,f){if(f)"
+    "(this._h[String(t)]=this._h[String(t)]||[]).push(f)};"
+    "FR.prototype.removeEventListener=function(t,f){var l=this._h[String(t)];"
+    "if(l){var i=l.indexOf(f);if(i>=0)l.splice(i,1)}};"
+    "function fremit(r,t){var e={type:t,target:r,loaded:r.result?1:0,total:0};"
+    "if(typeof r['on'+t]=='function')r['on'+t](e);"
+    "var l=r._h[t];if(l){var cp=l.slice();for(var i=0;i<cp.length;i++)cp[i](e)}}"
+    "FR.prototype.abort=function(){this._ab=1;this.readyState=2;this.result=null;fremit(this,'abort')};"
+    "function frdone(r,v){if(r._ab)return;r.result=v;r.readyState=2;fremit(r,'load');fremit(r,'loadend')}"
+    "FR.prototype.readAsText=function(bl){"
+    "var r=this;r._ab=0;r.readyState=1;fremit(r,'loadstart');"
+    "Promise.resolve().then(function(){frdone(r,new TextDecoder().decode(bview(bl)))})};"
+    "FR.prototype.readAsArrayBuffer=function(bl){"
+    "var r=this;r._ab=0;r.readyState=1;fremit(r,'loadstart');"
+    "Promise.resolve().then(function(){var u=bview(bl),c=new Uint8Array(u.length);"
+    "c.set(u);frdone(r,c.buffer)})};"
+    "FR.prototype.readAsDataURL=function(bl){"
+    "var r=this;r._ab=0;r.readyState=1;fremit(r,'loadstart');"
+    "Promise.resolve().then(function(){frdone(r,'data:'+(bl.type||'')+';base64,'+b64(bview(bl)))})};"
+    "FR.EMPTY=0;FR.LOADING=1;FR.DONE=2;"
+    "FR.prototype.EMPTY=0;FR.prototype.LOADING=1;FR.prototype.DONE=2;"
+    "globalThis.FileReader=FR;"
+    "var BREG={};"
+    "URL.createObjectURL=function(b){var k='blob:/'+(++URL._n);BREG[k]=b;return k};"
+    "URL._n=0;"
+    "URL.revokeObjectURL=function(k){delete BREG[k]};"
+    "globalThis.__bloburl=function(k){return BREG[k]};"
     "})()";
 
 void js_pexc(const char *where) {
@@ -1068,12 +1486,44 @@ static char *js_path(const char *src) {
     return p;
 }
 
+static char *hdr_build(JSContext *ctx, JSValueConst o) {
+    JSPropertyEnum *pr = 0;
+    uint32_t pn = 0;
+    if (JS_GetOwnPropertyNames(ctx, &pr, &pn, o, JS_GPN_STRING_MASK | JS_GPN_ENUM_ONLY) < 0)
+        return 0;
+    char *out = 0;
+    size_t n = 0;
+    for (uint32_t i = 0; i < pn; i++) {
+        const char *k = JS_AtomToCString(ctx, pr[i].atom);
+        JSValue v = JS_GetProperty(ctx, o, pr[i].atom);
+        const char *s = JS_ToCString(ctx, v);
+        JS_FreeValue(ctx, v);
+        if (k && s && *k && *s) {
+            size_t kl = strlen(k), sl = strlen(s);
+            out = realloc(out, n + kl + sl + 5);
+            if (!out) oom();
+            memcpy(out + n, k, kl);
+            n += kl;
+            out[n++] = ':';
+            out[n++] = ' ';
+            memcpy(out + n, s, sl);
+            n += sl;
+            out[n++] = '\r';
+            out[n++] = '\n';
+            out[n] = 0;
+        }
+        if (k) JS_FreeCString(ctx, k);
+        if (s) JS_FreeCString(ctx, s);
+        JS_FreeAtom(ctx, pr[i].atom);
+    }
+    free(pr);
+    return out;
+}
+
 static JSValue j_http(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
-    (void)thisv; (void)ac;
-    const char *m = JS_ToCString(ctx, av[0]);
-    const char *u = JS_ToCString(ctx, av[1]);
-    const char *bd = 0;
-    if (!JS_IsUndefined(av[2]) && !JS_IsNull(av[2])) bd = JS_ToCString(ctx, av[2]);
+    (void)thisv;
+    const char *m = ac > 0 ? JS_ToCString(ctx, av[0]) : 0;
+    const char *u = ac > 1 ? JS_ToCString(ctx, av[1]) : 0;
     if (!m || !u) {
         if (m) JS_FreeCString(ctx, m);
         if (u) JS_FreeCString(ctx, u);
@@ -1087,17 +1537,49 @@ static JSValue j_http(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *
         snprintf(ub, sizeof ub, "%s", j);
         free(j);
     }
+    char *bd = 0;
     size_t bl = 0;
+    JSValue bv = ac > 2 ? av[2] : JS_UNDEFINED;
+    if (!JS_IsUndefined(bv) && !JS_IsNull(bv)) {
+        size_t bn = 0;
+        unsigned char *bp = JS_GetArrayBuffer(ctx, &bn, bv);
+        if (bp) {
+            bd = malloc(bn + 1);
+            if (!bd) oom();
+            memcpy(bd, bp, bn);
+            bd[bn] = 0;
+            bl = bn;
+        } else {
+            JS_FreeValue(ctx, JS_GetException(ctx));
+            const char *s = JS_ToCStringLen(ctx, &bl, bv);
+            if (s) {
+                bd = malloc(bl + 1);
+                if (!bd) oom();
+                memcpy(bd, s, bl);
+                bd[bl] = 0;
+                JS_FreeCString(ctx, s);
+            }
+        }
+    }
+    char *hd = ac > 3 && JS_IsObject(av[3]) ? hdr_build(ctx, av[3]) : 0;
     int code = 0;
-    char *b = http_req(m, ub, bd, &bl, &code);
-    JS_FreeCString(ctx, m);
-    if (bd) JS_FreeCString(ctx, bd);
+    size_t rl = 0;
+    char *head = 0;
+    HttpReq rq = {.method = m, .url = ub, .body = bd, .blen = bl, .hdrs = hd,
+                  .len = &rl, .code = &code, .head = &head};
+    char *b = http_do(&rq);
     JSValue obj = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, obj, "status", JS_NewInt32(ctx, code));
-    JS_SetPropertyStr(ctx, obj, "ok", JS_NewBool(ctx, code >= 200 && code < 300));
+    JS_SetPropertyStr(ctx, obj, "ok", JS_NewBool(ctx, b != 0));
     JS_SetPropertyStr(ctx, obj, "body",
-                      JS_NewStringLen(ctx, b ? b : "", b ? bl : 0));
+                      JS_NewStringLen(ctx, b ? b : "", b ? rl : 0));
+    JS_SetPropertyStr(ctx, obj, "url", JS_NewString(ctx, ub));
+    JS_SetPropertyStr(ctx, obj, "headers", JS_NewString(ctx, head ? head : ""));
     if (b) free(b);
+    free(head);
+    free(hd);
+    free(bd);
+    JS_FreeCString(ctx, m);
     return obj;
 }
 
@@ -1428,6 +1910,419 @@ void js_fire(Node *n, const char *ty) {
     JS_FreeValue(CTX, cb);
 }
 
+static int VW_J = 1280, VH_J = 800;
+
+static void js_void_call(const char *fn, JSValue *av, int ac) {
+    JSValue g = JS_GetGlobalObject(CTX);
+    JSValue f = JS_GetPropertyStr(CTX, g, fn);
+    if (JS_IsFunction(CTX, f)) {
+        JSValue r = JS_Call(CTX, f, JS_UNDEFINED, ac, av);
+        if (JS_IsException(r)) js_pexc(fn);
+        JS_FreeValue(CTX, r);
+    }
+    JS_FreeValue(CTX, f);
+    JS_FreeValue(CTX, g);
+}
+
+void js_win_event(const char *type) {
+    if (!CTX || !type) return;
+    JSValue a = JS_NewString(CTX, type);
+    js_void_call("__winFire", &a, 1);
+    JS_FreeValue(CTX, a);
+}
+
+void js_viewport(int w, int h) {
+    if (w < 0) w = 0;
+    if (h < 0) h = 0;
+    int same = w == VW_J && h == VH_J;
+    if (w > 0 && h > 0) css_viewport(w, h);
+    VW_J = w;
+    VH_J = h;
+    if (!same) js_win_event("resize");
+}
+
+static JSValue j_vw(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv; (void)ac; (void)av;
+    return JS_NewInt32(ctx, VW_J);
+}
+
+static JSValue j_vh(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv; (void)ac; (void)av;
+    return JS_NewInt32(ctx, VH_J);
+}
+
+static JSValue j_mm(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    const char *q = ac > 0 ? JS_ToCString(ctx, av[0]) : 0;
+    int m = media_match(q ? q : "");
+    if (q) JS_FreeCString(ctx, q);
+    return JS_NewBool(ctx, m);
+}
+
+static JSValue j_now(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv; (void)ac; (void)av;
+    return JS_NewFloat64(ctx, now_ms());
+}
+
+static void rnd_bytes(unsigned char *b, size_t n) {
+    FILE *f = fopen("/dev/urandom", "rb");
+    if (f) {
+        size_t g = fread(b, 1, n, f);
+        fclose(f);
+        if (g == n) return;
+    }
+    for (size_t i = 0; i < n; i++) b[i] = (unsigned char)(rand() >> 5);
+}
+
+static JSValue j_rgv(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    JSValue o = ac > 0 ? av[0] : JS_UNDEFINED;
+    JSValue lv = JS_GetPropertyStr(ctx, o, "length");
+    int32_t n = 0;
+    JS_ToInt32(ctx, &n, lv);
+    JS_FreeValue(ctx, lv);
+    unsigned char buf[512];
+    for (int32_t i = 0; i < n; ) {
+        int32_t k = n - i < (int32_t)sizeof buf ? n - i : (int32_t)sizeof buf;
+        rnd_bytes(buf, (size_t)k);
+        for (int32_t j = 0; j < k; j++)
+            JS_SetPropertyInt64(ctx, o, i + j, JS_NewInt32(ctx, buf[j]));
+        i += k;
+    }
+    return JS_DupValue(ctx, o);
+}
+
+typedef struct WqE {
+    int type; char *data; size_t n; int bin; int code;
+    struct WqE *next;
+} WqE;
+
+typedef struct {
+    Ws *w; int dying; WqE *head, *tail;
+} WsSlot;
+
+static WsSlot *WSS;
+static int NWS, WSCAP;
+
+static void ws_post(int slot, int type, const char *d, size_t n, int bin, int code) {
+    if (slot < 0 || slot >= NWS) return;
+    WqE *e = calloc(1, sizeof *e);
+    if (!e) oom();
+    e->type = type;
+    e->bin = bin;
+    e->code = code;
+    if (d && n) {
+        e->data = malloc(n + 1);
+        if (!e->data) oom();
+        memcpy(e->data, d, n);
+        e->data[n] = 0;
+        e->n = n;
+    }
+    if (WSS[slot].tail) WSS[slot].tail->next = e;
+    else WSS[slot].head = e;
+    WSS[slot].tail = e;
+}
+
+static int ws_slot_of(Ws *w) {
+    void *ud = w ? ws_ud(w) : 0;
+    intptr_t s = (intptr_t)ud - 1;
+    if (s < 0 || s >= NWS || WSS[s].w != w) return -1;
+    return (int)s;
+}
+
+static void ws_h_open(Ws *w) { ws_post(ws_slot_of(w), 0, 0, 0, 0, 0); }
+
+static void ws_h_msg(Ws *w, const char *d, size_t n, int bin) {
+    ws_post(ws_slot_of(w), 1, d, n, bin, 0);
+}
+
+static void ws_h_close(Ws *w, int code, const char *reason) {
+    int s = ws_slot_of(w);
+    ws_post(s, 2, reason, reason ? strlen(reason) : 0, 0, code);
+    if (s >= 0) WSS[s].dying = 1;
+}
+
+static void ws_h_err(Ws *w, const char *what) {
+    int s = ws_slot_of(w);
+    ws_post(s, 3, what, what ? strlen(what) : 0, 0, 0);
+    if (s >= 0) WSS[s].dying = 1;
+}
+
+static const WsHooks WSHOOKS = { ws_h_open, ws_h_msg, ws_h_close, ws_h_err };
+
+static JSValue js_bytes(JSContext *ctx, const char *d, size_t n) {
+    JSValue ab = JS_NewArrayBufferCopy(ctx, (const unsigned char *)d, n);
+    JSValue g = JS_GetGlobalObject(ctx);
+    JSValue U = JS_GetPropertyStr(ctx, g, "Uint8Array");
+    JSValue argv[1] = { ab };
+    JSValue r = JS_CallConstructor(ctx, U, 1, argv);
+    JS_FreeValue(ctx, ab);
+    JS_FreeValue(ctx, U);
+    JS_FreeValue(ctx, g);
+    return r;
+}
+
+static void ws_kill(int slot) {
+    WqE *e = WSS[slot].head;
+    while (e) {
+        WqE *nx = e->next;
+        free(e->data);
+        free(e);
+        e = nx;
+    }
+    if (WSS[slot].w) ws_free(WSS[slot].w);
+    memset(WSS + slot, 0, sizeof WSS[slot]);
+}
+
+static void ws_done_all(void) {
+    for (int i = 0; i < NWS; i++) if (WSS[i].w || WSS[i].head) ws_kill(i);
+    NWS = 0;
+}
+
+static void ws_drain(void) {
+    if (!CTX) return;
+    for (int i = 0; i < NWS; i++) {
+        WqE *e;
+        while ((e = WSS[i].head)) {
+            WSS[i].head = e->next;
+            if (!WSS[i].head) WSS[i].tail = 0;
+            JSValue a = JS_UNDEFINED, b = JS_UNDEFINED;
+            if (e->type == 1) {
+                b = JS_NewInt32(CTX, e->bin);
+                a = e->bin ? js_bytes(CTX, e->data, e->n)
+                           : JS_NewStringLen(CTX, e->data, e->n);
+            } else if (e->type == 2) {
+                a = JS_NewString(CTX, e->data ? e->data : "");
+                b = JS_NewInt32(CTX, e->code);
+            } else if (e->type == 3) {
+                a = JS_NewString(CTX, e->data ? e->data : "websocket error");
+            }
+            if (e->type == 0)
+                b = JS_NewInt32(CTX, WSS[i].w ? ws_state(WSS[i].w) : WS_OPEN);
+            JSValue g = JS_GetGlobalObject(CTX);
+            JSValue f = JS_GetPropertyStr(CTX, g, "__wsFire");
+            if (JS_IsFunction(CTX, f)) {
+                JSValue av[5] = { JS_NewInt32(CTX, i), JS_NewInt32(CTX, e->type), a, b,
+                                  JS_NewInt32(CTX, WSS[i].dying) };
+                JSValue r = JS_Call(CTX, f, JS_UNDEFINED, 5, av);
+                if (JS_IsException(r)) js_pexc("ws");
+                JS_FreeValue(CTX, r);
+                for (int k = 0; k < 5; k++) JS_FreeValue(CTX, av[k]);
+            } else {
+                JS_FreeValue(CTX, a);
+                JS_FreeValue(CTX, b);
+            }
+            JS_FreeValue(CTX, f);
+            JS_FreeValue(CTX, g);
+            free(e->data);
+            e->data = 0;
+            if (WSS[i].dying && !WSS[i].head) {
+                free(e);
+                ws_kill(i);
+                break;
+            }
+            free(e);
+        }
+    }
+}
+
+static void ws_tick(void) {
+    if (!CTX) return;
+    ws_poll();
+    ws_drain();
+}
+
+static int ws_live(void) {
+    for (int i = 0; i < NWS; i++) if (WSS[i].w) return 1;
+    return 0;
+}
+
+static JSValue j_ws(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    const char *u = ac > 0 ? JS_ToCString(ctx, av[0]) : 0;
+    if (!u) return JS_NewInt32(ctx, -1);
+    int slot = -1;
+    for (int i = 0; i < NWS; i++) if (!WSS[i].w) { slot = i; break; }
+    if (slot < 0) {
+        GROW(WSS, NWS, WSCAP, WsSlot);
+        memset(WSS + NWS, 0, sizeof WSS[NWS]);
+        slot = NWS++;
+    }
+    Ws *w = ws_connect(u, &WSHOOKS, (void *)(intptr_t)(slot + 1));
+    JS_FreeCString(ctx, u);
+    if (!w) return JS_NewInt32(ctx, -1);
+    WSS[slot].w = w;
+    return JS_NewInt32(ctx, slot);
+}
+
+static JSValue j_wssend(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    int32_t slot = 0;
+    if (ac < 2 || JS_ToInt32(ctx, &slot, av[0]) || slot < 0 || slot >= NWS || !WSS[slot].w)
+        return JS_NewBool(ctx, 0);
+    int r = -1;
+    if (JS_IsString(av[1])) {
+        size_t n = 0;
+        const char *s = JS_ToCStringLen(ctx, &n, av[1]);
+        if (!s) return JS_NewBool(ctx, 0);
+        r = ws_send(WSS[slot].w, s, n, 0);
+        JS_FreeCString(ctx, s);
+    } else {
+        size_t n = 0;
+        unsigned char *p = JS_GetArrayBuffer(ctx, &n, av[1]);
+        if (!p) {
+            JSValue ex = JS_GetException(ctx);
+            JS_FreeValue(ctx, ex);
+            return JS_NewBool(ctx, 0);
+        }
+        r = ws_send(WSS[slot].w, (const char *)p, n, 1);
+    }
+    return JS_NewBool(ctx, r == 0);
+}
+
+static JSValue j_wsclose(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    int32_t slot = 0, code = 1000;
+    if (ac < 1 || JS_ToInt32(ctx, &slot, av[0]) || slot < 0 || slot >= NWS || !WSS[slot].w)
+        return JS_UNDEFINED;
+    if (ac > 1) JS_ToInt32(ctx, &code, av[1]);
+    const char *rs = ac > 2 ? JS_ToCString(ctx, av[2]) : 0;
+    ws_close(WSS[slot].w, code, rs ? rs : "");
+    if (rs) JS_FreeCString(ctx, rs);
+    return JS_UNDEFINED;
+}
+
+typedef struct Es {
+    struct Es *next;
+    NetStream *st;
+    char *buf;
+    size_t n, cap;
+    int id, dead;
+} Es;
+
+static Es *ESL;
+static int NES;
+
+static Es *es_get(int id) {
+    for (Es *e = ESL; e; e = e->next) if (e->id == id) return e;
+    return 0;
+}
+
+static void es_drop(Es *e) {
+    Es **pp = &ESL;
+    while (*pp && *pp != e) pp = &(*pp)->next;
+    if (*pp) *pp = e->next;
+    if (e->st) ns_close(e->st);
+    free(e->buf);
+    free(e);
+}
+
+static void es_fire(int id, const char *chunk, size_t n, int end) {
+    JSValue g = JS_GetGlobalObject(CTX);
+    JSValue f = JS_GetPropertyStr(CTX, g, "__esFire");
+    if (JS_IsFunction(CTX, f)) {
+        JSValue av[3] = { JS_NewInt32(CTX, id),
+                          JS_NewStringLen(CTX, chunk, n),
+                          JS_NewBool(CTX, end) };
+        JSValue r = JS_Call(CTX, f, JS_UNDEFINED, 3, av);
+        if (JS_IsException(r)) js_pexc("sse");
+        JS_FreeValue(CTX, r);
+        for (int i = 0; i < 3; i++) JS_FreeValue(CTX, av[i]);
+    }
+    JS_FreeValue(CTX, f);
+    JS_FreeValue(CTX, g);
+}
+
+static char *es_scan(char *s, size_t n, size_t *used) {
+    for (size_t i = 0; i + 1 < n; i++) {
+        if (s[i] != '\n') continue;
+        size_t j = i + 1;
+        if (s[j] == '\r') j++;
+        if (j < n && s[j] == '\n') { *used = j + 1; return s + i; }
+    }
+    return 0;
+}
+
+static void es_tick(void) {
+    if (!CTX) return;
+    Es *e = ESL;
+    while (e) {
+        Es *nx = e->next;
+        if (e->dead) { es_drop(e); e = nx; continue; }
+        for (;;) {
+            if (e->n + 4097 > e->cap) {
+                e->cap = e->cap ? e->cap << 1 : 8192;
+                char *nb = realloc(e->buf, e->cap);
+                if (!nb) oom();
+                e->buf = nb;
+            }
+            long r = ns_read(e->st, e->buf + e->n, 4096);
+            if (r > 0) { e->n += (size_t)r; continue; }
+            if (r < 0) {
+                es_fire(e->id, "", 0, 1);
+                e->dead = 1;
+                break;
+            }
+            break;
+        }
+        if (!e->dead && e->n) {
+            size_t off = 0;
+            for (;;) {
+                size_t u = 0;
+                char *be = es_scan(e->buf + off, e->n - off, &u);
+                if (!be) break;
+                es_fire(e->id, e->buf + off, (size_t)(be - (e->buf + off)), 0);
+                off += u;
+            }
+            if (off) {
+                memmove(e->buf, e->buf + off, e->n - off);
+                e->n -= off;
+            }
+        }
+        e = nx;
+    }
+}
+
+static JSValue j_es(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    const char *u = ac > 0 ? JS_ToCString(ctx, av[0]) : 0;
+    if (!u) return JS_NewInt32(ctx, -1);
+    char ub[2048];
+    snprintf(ub, sizeof ub, "%s", u);
+    JS_FreeCString(ctx, u);
+    if (!url_is(ub) && url_is(BASE)) {
+        char *j = url_join(BASE, ub);
+        snprintf(ub, sizeof ub, "%s", j);
+        free(j);
+    }
+    char *head = 0;
+    int code = 0;
+    NetStream *st = http_open("GET", ub, "Accept: text/event-stream\r\nCache-Control: no-cache\r\n",
+                              &head, &code);
+    free(head);
+    if (!st) return JS_NewInt32(ctx, -1);
+    Es *e = calloc(1, sizeof *e);
+    if (!e) oom();
+    e->st = st;
+    e->id = ++NES;
+    e->next = ESL;
+    ESL = e;
+    return JS_NewInt32(ctx, e->id);
+}
+
+static JSValue j_esclose(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
+    (void)thisv;
+    int32_t id = 0;
+    if (ac < 1 || JS_ToInt32(ctx, &id, av[0])) return JS_UNDEFINED;
+    Es *e = es_get(id);
+    if (e) e->dead = 1;
+    return JS_UNDEFINED;
+}
+
+static int es_live(void) {
+    return ESL != 0;
+}
+
 void js_init(void) {
     NELW = 0;
     RT = JS_NewRuntime();
@@ -1494,6 +2389,16 @@ void js_init(void) {
     JS_SetPropertyStr(CTX, g, "_proto", JS_NewCFunction(CTX, j_proto, "_proto", 0));
     JS_SetPropertyStr(CTX, g, "_base", JS_NewString(CTX, BASE));
     JS_SetPropertyStr(CTX, g, "_http", JS_NewCFunction(CTX, j_http, "_http", 3));
+    JS_SetPropertyStr(CTX, g, "_vw", JS_NewCFunction(CTX, j_vw, "_vw", 0));
+    JS_SetPropertyStr(CTX, g, "_vh", JS_NewCFunction(CTX, j_vh, "_vh", 0));
+    JS_SetPropertyStr(CTX, g, "_mm", JS_NewCFunction(CTX, j_mm, "_mm", 1));
+    JS_SetPropertyStr(CTX, g, "_now", JS_NewCFunction(CTX, j_now, "_now", 0));
+    JS_SetPropertyStr(CTX, g, "_rgv", JS_NewCFunction(CTX, j_rgv, "_rgv", 1));
+    JS_SetPropertyStr(CTX, g, "_ws", JS_NewCFunction(CTX, j_ws, "_ws", 1));
+    JS_SetPropertyStr(CTX, g, "_wssend", JS_NewCFunction(CTX, j_wssend, "_wssend", 2));
+    JS_SetPropertyStr(CTX, g, "_wsclose", JS_NewCFunction(CTX, j_wsclose, "_wsclose", 3));
+    JS_SetPropertyStr(CTX, g, "_es", JS_NewCFunction(CTX, j_es, "_es", 1));
+    JS_SetPropertyStr(CTX, g, "_esclose", JS_NewCFunction(CTX, j_esclose, "_esclose", 1));
     JS_FreeValue(CTX, g);
     JSValue r = JS_Eval(CTX, BOOT, sizeof BOOT - 1, "<boot>", JS_EVAL_TYPE_GLOBAL);
     if (JS_IsException(r)) js_pexc("<boot>");
@@ -1501,6 +2406,9 @@ void js_init(void) {
 }
 
 void js_done(void) {
+    ws_done_all();
+    while (ESL) es_drop(ESL);
     JS_FreeContext(CTX);
+    CTX = 0;
     JS_FreeRuntime(RT);
 }

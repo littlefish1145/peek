@@ -1,0 +1,16 @@
+root [0,0 640x192] m=0,0,16,0
+  block <html> [0,8 640x184] m=8,0,16,0
+    block <body> [0,8 640x184]
+      block <div> [8,8 232x80] m=0,8,8,8 p=8,8,8,8 b=8,8,8,8
+        text [0,0 0x0] "box model: 200px content"
+      block <p> [0,104 640x16] m=16,0,16,0
+        text [0,0 0x0] "collapsing: "
+        inline <span> [0,0 0x0]
+          text [0,0 0x0] "inline background"
+        text [0,0 0x0] " and text"
+      block <p> [0,136 640x16] m=16,0,16,0
+        text [0,0 0x0] "second paragraph — one"
+      block <p> [16,176 640x16] m=16,0,0,0
+        text [0,0 0x0] "relatively offset by 2 c"
+      block <div> [320,0 120x32]
+        text [0,0 0x0] "absolutely positioned"

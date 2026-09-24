@@ -1,0 +1,39 @@
+root [0,0 640x338]
+  block <html> [0,16 640x322] m=16,0,0,0
+    block <body> [0,16 640x322]
+      block <ul> [0,16 640x66] m=0,0,16,0 p=0,0,0,40
+        list <li> [40,16 600x16]
+          text [0,0 0x0] "one"
+        list <li> [42,32 598x16] m=0,0,0,2
+          text [0,0 0x0] "two"
+        list <li> [42,49 598x16] m=1,0,0,2
+          text [0,0 0x0] "three"
+        list <li> [42,66 598x16] m=1,0,0,2
+          text [0,0 0x0] "four"
+      block <p> [0,98 640x16] m=16,0,16,0
+        text [0,0 0x0] "a"
+      block <p> [0,130 640x16] m=16,0,16,0
+        text [0,0 0x0] "b"
+      block <p> [0,162 640x16] m=16,0,16,0
+        text [0,0 0x0] "c"
+      block <p> [0,194 640x16] m=16,0,16,0
+        inline <span> [0,0 0x0]
+          text [0,0 0x0] "s"
+      block <div> [0,226 640x0]
+      block <div> [0,226 640x16]
+        text [0,0 0x0] "x"
+      anon [0,242 640x32]
+        iblock <input> [0,242 34x32] p=8,8,8,8 b=8,8,8,8
+        iblock <input> [34,242 32x32] p=8,8,8,8 b=8,8,8,8
+        iblock <input> [66,242 34x32] p=8,8,8,8 b=8,8,8,8
+        inline <a> [0,0 0x0]
+          text [0,0 0x0] "link"
+      block <div> [0,274 640x16]
+        text [0,0 0x0] "brit"
+      block <div> [0,290 640x16]
+        text [0,0 0x0] "us"
+      block <div> [0,306 640x16]
+        text [0,0 0x0] "not"
+      anon [0,322 640x16]
+        inline <b> [0,0 0x0]
+          text [0,0 0x0] "x"

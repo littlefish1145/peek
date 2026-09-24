@@ -1,4 +1,5 @@
 #include "peek.h"
+#include "scan.h"
 
 static void parse_attrs(char *s, Node *n) {
     while (*s) {
@@ -25,13 +26,13 @@ static void parse_attrs(char *s, Node *n) {
     }
 }
 
-static void add_text(char *s, char *e, Node *parent) {
+static void add_text(char *s, char *e, Node *parent, int amp) {
     char sv = *e;
-    char *t = cut(s, e);
-    if (*t) {
+    *e = 0;
+    if (*s) {
         Node *n = node(N_TEXT);
-        n->text = t;
-        n->tlen = unescape(t, (int)strlen(t));
+        n->text = s;
+        n->tlen = amp ? unescape(s, (int)strlen(s)) : (int)(e - s);
         n->parent = parent;
         push_child(parent, n);
     }
@@ -67,6 +68,97 @@ static char *raw_end(char *p, char *end, const char *name, int nl) {
     return end;
 }
 
+static int name_eq(Node *n, const char *t) {
+    int l = (int)strlen(t);
+    return n->taglen == l && !memcmp(n->tag, t, (size_t)l);
+}
+
+static int name_in(const char *t, const char *const *list) {
+    for (int i = 0; list[i]; i++)
+        if (!strcmp(t, list[i])) return 1;
+    return 0;
+}
+
+static int node_in(Node *n, const char *const *list) {
+    for (int i = 0; list[i]; i++)
+        if (name_eq(n, list[i])) return 1;
+    return 0;
+}
+
+static int raw_text(const char *t) {
+    static const char *const RT[] = {"script", "style", "textarea", "title",
+                                     "iframe", "noembed", "noframes", "xmp", 0};
+    return name_in(t, RT);
+}
+
+static void close_implied(Node **stk, int *top, const char *t) {
+    static const char *const BLK[] = {"address", "article", "aside", "blockquote",
+        "details", "div", "dl", "fieldset", "figcaption", "figure", "footer",
+        "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr",
+        "main", "menu", "nav", "ol", "p", "pre", "section", "table", "ul", 0};
+    static const char *const P_ONLY[] = {"p", 0};
+    static const char *const LI[] = {"p", "li", 0};
+    static const char *const DL[] = {"p", "dt", "dd", 0};
+    static const char *const TD[] = {"td", "th", 0};
+    static const char *const TR[] = {"td", "th", "tr", 0};
+    static const char *const SEC[] = {"td", "th", "tr", "thead", "tbody", "tfoot", 0};
+    static const char *const OPT[] = {"option", "optgroup", 0};
+    static const char *const RT[] = {"rt", "rp", 0};
+    const char *const *set = 0;
+    if (name_in(t, BLK)) set = P_ONLY;
+    else if (!strcmp(t, "li")) set = LI;
+    else if (!strcmp(t, "dt") || !strcmp(t, "dd")) set = DL;
+    else if (!strcmp(t, "td") || !strcmp(t, "th")) set = TD;
+    else if (!strcmp(t, "tr")) set = TR;
+    else if (!strcmp(t, "thead") || !strcmp(t, "tbody") || !strcmp(t, "tfoot"))
+        set = SEC;
+    else if (!strcmp(t, "option")) set = OPT;
+    else if (!strcmp(t, "rt") || !strcmp(t, "rp")) set = RT;
+    else return;
+    while (*top > 1 && node_in(stk[*top - 1], set)) (*top)--;
+}
+
+static void move_children(Node *from, Node *to, Node *keep1, Node *keep2) {
+    int n = from->nchild;
+    if (n <= 0) return;
+    Node **tmp = malloc((size_t)n * sizeof *tmp);
+    if (!tmp) oom();
+    int c = 0;
+    for (int i = 0; i < from->nchild; i++) {
+        Node *x = from->child[i];
+        if (x == to || x == keep1 || x == keep2) continue;
+        tmp[c++] = x;
+    }
+    for (int i = 0; i < c; i++) dom_append(to, tmp[i]);
+    free(tmp);
+}
+
+static void dom_normalize(Node *root) {
+    Node *html = 0;
+    for (int i = 0; i < root->nchild; i++)
+        if (!html && root->child[i]->tag[0] != '#' && name_eq(root->child[i], "html"))
+            html = root->child[i];
+    if (!html) {
+        html = node("html");
+        html->parent = root;
+        push_child(root, html);
+    }
+    move_children(root, html, 0, 0);
+    Node *head = 0, *body = 0;
+    for (int i = 0; i < html->nchild; i++) {
+        Node *c = html->child[i];
+        if (c->tag[0] == '#') continue;
+        if (!head && name_eq(c, "head")) head = c;
+        if (!body && name_eq(c, "body")) body = c;
+    }
+    if (!body) {
+        body = node("body");
+        body->parent = html;
+        push_child(html, body);
+    }
+    move_children(html, body, head, body);
+}
+
 Node *parse_html(char *src) {
     Node **stk = 0;
     int scap = 0, top = 0;
@@ -76,9 +168,9 @@ Node *parse_html(char *src) {
     char *p = src;
     while (p < end) {
         if (*p != '<') {
-            char *e = memchr(p, '<', (size_t)(end - p));
-            if (!e) e = end;
-            add_text(p, e, stk[top - 1]);
+            int amp = 0;
+            char *e = scan_next(p, end, &amp);
+            add_text(p, e, stk[top - 1], amp);
             p = e;
         } else {
             if (p + 4 <= end && !strncmp(p + 1, "!--", 3)) {
@@ -88,21 +180,23 @@ Node *parse_html(char *src) {
             }
             char *e = tag_end(p, end);
             if (!e) {
-                char *nx = p + 1 < end
-                    ? memchr(p + 1, '<', (size_t)(end - p - 1))
-                    : 0;
-                char *t = nx ? nx : end;
-                add_text(p + 1, t, stk[top - 1]);
+                int amp = 0;
+                char *t = p + 1 < end ? scan_next(p + 1, end, &amp) : end;
+                add_text(p + 1, t, stk[top - 1], amp);
                 p = t;
                 continue;
             }
             char *t = cut(p + 1, e);
             p = e + 1;
-            if (*t == '!') {
+            if (*t == '!' || *t == '?') {
             } else if (*t == '/') {
                 for (char *q = t + 1; *q; q++) *q = (char)tolower((unsigned char)*q);
-                while (top > 1 && stk[top - 1]->tagpk != pk(t + 1)) top--;
-                if (top > 1) top--;
+                char *sp = strchr(t + 1, ' ');
+                if (sp) *sp = 0;
+                int f = 0;
+                for (int k = top - 1; k > 0; k--)
+                    if (name_eq(stk[k], t + 1)) { f = k; break; }
+                if (f) top = f;
             } else if (*t) {
                 int sc = t[strlen(t) - 1] == '/';
                 if (sc) t[strlen(t) - 1] = 0;
@@ -110,19 +204,15 @@ Node *parse_html(char *src) {
                 char *te = sp ? sp : t + strlen(t);
                 for (char *q = t; q < te; q++) *q = (char)tolower((unsigned char)*q);
                 Node *n = node(sp ? cut(t, sp) : t);
+                close_implied(stk, &top, n->tag);
                 if (sp) parse_attrs(sp + 1, n);
                 n->parent = stk[top - 1];
                 push_child(stk[top - 1], n);
                 int raw = 0;
-                if (!sc && !(n->def->f & T_VOID)) {
-                    if (n->taglen == 6 && n->tagpk == K6('s', 'c', 'r', 'i', 'p', 't'))
-                        raw = 1;
-                    else if (n->taglen == 5 && n->tagpk == K5('s', 't', 'y', 'l', 'e'))
-                        raw = 1;
-                }
+                if (!sc && !(n->def->f & T_VOID)) raw = raw_text(n->tag);
                 if (raw) {
                     char *re = raw_end(p, end, n->tag, n->taglen);
-                    add_text(p, re, n);
+                    add_text(p, re, n, 1);
                     char *close = memchr(re, '>', (size_t)(end - re));
                     p = close ? close + 1 : end;
                 } else if (!sc && !(n->def->f & T_VOID)) {
@@ -134,5 +224,6 @@ Node *parse_html(char *src) {
     }
     Node *root = stk[0];
     free(stk);
+    dom_normalize(root);
     return root;
 }

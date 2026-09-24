@@ -1,0 +1,32 @@
+<html>
+  <body>
+    @ body
+    = margin=0#1
+    <style>
+    - "\n"
+    <div class="box">
+      @ .box
+      = width=200px#256 padding=8px#256 border=8px solid red#256 margin=8px#256 background-color=navy#256 color=white#256
+      - "box model: 200px content + 8px padding + 8px border"
+    - "\n"
+    <p>
+      - "collapsing: "
+      <span class="inline">
+        @ .inline
+        = background-color=green#256
+        - "inline background"
+      - " and text"
+    - "\n"
+    <p>
+      - "second paragraph — one blank row between"
+    - "\n"
+    <p id="rel">
+      @ #rel
+      = position=relative#65536 left=16px#65536 top=8px#65536
+      - "relatively offset by 2 columns and half a row"
+    - "\n"
+    <div id="abs">
+      @ #abs
+      = position=absolute#65536 left=320px#65536 top=0#65536 width=120px#65536 background-color=maroon#65536
+      - "absolutely positioned"
+    - "\n"

@@ -1,0 +1,9 @@
+<html>
+  <body>
+    <p>
+      - "before stray\n"
+    <p>
+      - "normal & decoded\n"
+    <p>
+      - "truncated tag "
+      - "div class=\"x\n"

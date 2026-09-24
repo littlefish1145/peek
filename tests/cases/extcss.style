@@ -1,0 +1,13 @@
+<html>
+  <body>
+    <link rel="stylesheet" href="ext.css">
+    - "\n"
+    <style>
+    - "\n"
+    <link rel="stylesheet" href="ext2.css">
+    - "\n"
+    <p class="box note">
+      @ .note | .box | .note | .note
+      = border-width=1px#256 color=olive#256 font-weight=bold#256
+      - "external before internal, second file last"
+    - "\n"

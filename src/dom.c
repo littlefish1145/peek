@@ -24,24 +24,54 @@ const Tag TAGS[] = {
     {.name = "html", .f = T_BLOCK}, {.name = "body", .f = T_BLOCK},
     {.name = "head", .f = T_HIDDEN}, {.name = "title", .f = T_HIDDEN},
     {.name = "style", .f = T_HIDDEN}, {.name = "script", .f = T_HIDDEN},
-    {.name = "p", .f = T_BLOCK}, {.name = "div", .f = T_BLOCK}, {.name = "span"},
+    {.name = "template", .f = T_HIDDEN}, {.name = "noscript", .f = T_HIDDEN},
+    {.name = "base", .f = T_VOID | T_HIDDEN}, {.name = "meta", .f = T_VOID | T_HIDDEN},
+    {.name = "link", .f = T_VOID | T_HIDDEN}, {.name = "source", .f = T_VOID},
+    {.name = "track", .f = T_VOID}, {.name = "area", .f = T_VOID},
+    {.name = "param", .f = T_VOID}, {.name = "col", .f = T_VOID},
+    {.name = "#comment", .f = T_HIDDEN},
+
+    {.name = "p", .f = T_BLOCK}, {.name = "div", .f = T_BLOCK},
+    {.name = "address", .f = T_BLOCK}, {.name = "center", .f = T_BLOCK},
     {.name = "h1", .f = T_BLOCK, .ua = ua_bold}, {.name = "h2", .f = T_BLOCK, .ua = ua_bold},
     {.name = "h3", .f = T_BLOCK, .ua = ua_bold}, {.name = "h4", .f = T_BLOCK, .ua = ua_bold},
     {.name = "h5", .f = T_BLOCK, .ua = ua_bold}, {.name = "h6", .f = T_BLOCK, .ua = ua_bold},
     {.name = "ul", .f = T_BLOCK}, {.name = "ol", .f = T_BLOCK},
+    {.name = "menu", .f = T_BLOCK},
     {.name = "li", .f = T_BLOCK | T_LIST},
+    {.name = "dl", .f = T_BLOCK}, {.name = "dt", .f = T_BLOCK}, {.name = "dd", .f = T_BLOCK},
     {.name = "header", .f = T_BLOCK}, {.name = "footer", .f = T_BLOCK},
     {.name = "section", .f = T_BLOCK}, {.name = "article", .f = T_BLOCK},
     {.name = "nav", .f = T_BLOCK}, {.name = "aside", .f = T_BLOCK},
-    {.name = "main", .f = T_BLOCK}, {.name = "blockquote", .f = T_BLOCK},
-    {.name = "figure", .f = T_BLOCK}, {.name = "figcaption", .f = T_BLOCK},
-    {.name = "br", .f = T_VOID, .draw = d_br},
-    {.name = "hr", .f = T_VOID | T_BLOCK, .draw = d_hr},
-    {.name = "button", .draw = d_button},
-    {.name = "a", .ua = ua_link},
-    {.name = "template", .f = T_HIDDEN},
-    {.name = "noscript", .f = T_HIDDEN},
-    {.name = "#comment", .f = T_HIDDEN},
+    {.name = "main", .f = T_BLOCK}, {.name = "figure", .f = T_BLOCK},
+    {.name = "figcaption", .f = T_BLOCK}, {.name = "blockquote", .f = T_BLOCK},
+    {.name = "details", .f = T_BLOCK}, {.name = "summary", .f = T_BLOCK},
+    {.name = "fieldset", .f = T_BLOCK}, {.name = "legend", .f = T_BLOCK},
+    {.name = "form", .f = T_BLOCK}, {.name = "dialog", .f = T_BLOCK},
+    {.name = "pre", .f = T_BLOCK}, {.name = "hr", .f = T_VOID | T_BLOCK},
+    {.name = "br", .f = T_VOID}, {.name = "wbr", .f = T_VOID},
+
+    {.name = "table", .f = T_BLOCK}, {.name = "caption", .f = T_BLOCK},
+    {.name = "colgroup", .f = T_BLOCK}, {.name = "thead", .f = T_BLOCK},
+    {.name = "tbody", .f = T_BLOCK}, {.name = "tfoot", .f = T_BLOCK},
+    {.name = "tr", .f = T_BLOCK}, {.name = "td", .f = T_BLOCK}, {.name = "th", .f = T_BLOCK},
+
+    {.name = "span"}, {.name = "a", .ua = ua_link}, {.name = "abbr"},
+    {.name = "b", .ua = ua_bold}, {.name = "strong", .ua = ua_bold},
+    {.name = "i", .ua = ua_italic}, {.name = "em", .ua = ua_italic},
+    {.name = "cite", .ua = ua_italic}, {.name = "dfn", .ua = ua_italic},
+    {.name = "var", .ua = ua_italic}, {.name = "u"}, {.name = "s"}, {.name = "del"},
+    {.name = "ins"}, {.name = "small"}, {.name = "big"}, {.name = "mark"},
+    {.name = "sub"}, {.name = "sup"}, {.name = "q"}, {.name = "time"},
+    {.name = "data"}, {.name = "bdi"}, {.name = "bdo"}, {.name = "ruby"},
+    {.name = "rt"}, {.name = "rp"}, {.name = "code"}, {.name = "kbd"},
+    {.name = "samp"}, {.name = "output"}, {.name = "label"},
+    {.name = "img", .f = T_VOID}, {.name = "input", .f = T_VOID},
+    {.name = "textarea"}, {.name = "select"}, {.name = "option"}, {.name = "optgroup"},
+    {.name = "button"}, {.name = "iframe"}, {.name = "canvas"}, {.name = "svg"},
+    {.name = "math"}, {.name = "video"}, {.name = "audio"}, {.name = "object"},
+    {.name = "embed", .f = T_VOID}, {.name = "map"}, {.name = "progress"},
+    {.name = "meter"}, {.name = "marquee"},
 };
 
 const Tag TAG_ANY = {0};
@@ -180,12 +210,4 @@ Node *find_tag(Node *n, uint64_t k) {
         if (r) return r;
     }
     return NULL;
-}
-
-void css_links(Node *n, Node **out, int *np, int cap) {
-    if (n->taglen == 4 && n->tagpk == K4('l', 'i', 'n', 'k') && *np < cap) {
-        char *rel = attr_get(n, "rel");
-        if (rel && strstr(rel, "style") && attr_get(n, "href")) out[(*np)++] = n;
-    }
-    for (int i = 0; i < n->nchild; i++) css_links(n->child[i], out, np, cap);
 }

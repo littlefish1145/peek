@@ -1,0 +1,11 @@
+id wins over 20 classes
+
+author !important wins over id
+
+inline wins over id descendant
+
+later source order wins on tie
+
+last duplicate rule wins
+
+x

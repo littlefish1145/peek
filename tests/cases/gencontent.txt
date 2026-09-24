@@ -1,0 +1,22 @@
+[q]text (end)
+
+  •  - one
+  •  - two
+
+link (x.html)
+
+no pseudo
+
+empty pseudo
+
+A—Bescape
+
+😀!emoji escape
+
+x�ynull escape
+
+a bhex newline
+
+1=M=2concat
+
+display none pseudo

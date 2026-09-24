@@ -3,10 +3,10 @@
 void oom(void) { fputs("peek: out of memory\n", stderr); exit(1); }
 
 uint64_t pk(const char *s) {
-    uint64_t k;
-    memcpy(&k, s, 8);
-    uint64_t z = (k - 0x0101010101010101) & ~k & 0x8080808080808080;
-    return k & (z ^ (z - 1));
+    uint64_t k = 0;
+    for (int i = 0; i < 8 && s[i]; i++)
+        k |= (uint64_t)(unsigned char)s[i] << (i * 8);
+    return k;
 }
 
 char *cut(char *s, char *e) {
@@ -16,7 +16,7 @@ char *cut(char *s, char *e) {
     return s;
 }
 
-static int utf8_enc(char *w, unsigned cp) {
+int utf8_put(char *w, unsigned cp) {
     if (cp < 0x80) { *w = (char)cp; return 1; }
     if (cp < 0x800) {
         w[0] = (char)(0xC0 | (cp >> 6));
@@ -91,7 +91,7 @@ int unescape(char *s, int len) {
             }
         }
         if (!ok) { *w++ = *r++; continue; }
-        w += utf8_enc(w, cp);
+        w += utf8_put(w, cp);
         r = sc + 1;
     }
     return (int)(w - s);

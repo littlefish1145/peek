@@ -1,0 +1,81 @@
+root [0,0 640x490]
+  block <html> [0,16 640x474] m=16,0,0,0
+    block <body> [0,16 640x474]
+      block <p> [0,16 640x16] m=0,0,16,0
+        text [0,0 0x0] "first paragraph"
+        inline <span> [0,0 0x0]
+          text [0,0 0x0] "inline"
+        text [0,0 0x0] " still first
+"
+      block <p> [0,48 640x16] m=16,0,16,0
+        text [0,0 0x0] "second paragraph
+"
+      block <div> [0,80 640x234] m=16,0,0,0
+        block <ul> [0,80 640x48] m=0,0,16,0 p=0,0,0,40
+          list <li> [40,80 600x16]
+            text [0,0 0x0] "one
+    "
+          list <li> [40,96 600x16]
+            text [0,0 0x0] "two
+    "
+          list <li> [40,112 600x16]
+            text [0,0 0x0] "THREE
+  "
+        block <dl> [0,144 640x64] m=16,0,16,0
+          block <dt> [0,144 640x16]
+            text [0,0 0x0] "term
+    "
+          block <dd> [40,160 600x16] m=0,0,0,40
+            text [0,0 0x0] "definition
+    "
+          block <dt> [0,176 640x16]
+            text [0,0 0x0] "term2
+    "
+          block <dd> [40,192 600x16] m=0,0,0,40
+            text [0,0 0x0] "def2
+  "
+        table <table> [0,224 54x42]
+          row <tr> [0,0 0x0]
+            cell <td> [2,226 20x18] p=1,1,1,1
+              text [0,0 0x0] "a"
+            cell <td> [24,226 28x18] p=1,1,1,1
+              text [0,0 0x0] "b
+    "
+          row <tr> [0,0 0x0]
+            cell <th> [2,246 20x18] p=1,1,1,1
+              text [0,0 0x0] "h1"
+            cell <th> [24,246 28x18] p=1,1,1,1
+              text [0,0 0x0] "h2
+  "
+        anon [0,266 640x48]
+          iblock <select> [0,266 104x48] p=8,8,8,8 b=8,8,8,8
+            text [0,0 0x0] "
+    "
+            inline <option> [0,0 0x0]
+              text [0,0 0x0] "one
+    "
+            inline <option> [0,0 0x0]
+              text [0,0 0x0] "two
+  "
+          iblock <textarea> [104,266 192x48] p=8,8,8,8 b=8,8,8,8
+            text [0,0 0x0] "raw <b>text</b> here"
+      block <p> [0,330 640x16] m=16,0,16,0
+        text [0,0 0x0] "unclosed p before unmatc"
+        text [0,0 0x0] "
+"
+        text [0,0 0x0] "
+"
+      block <p> [0,362 640x16] m=16,0,16,0
+        text [0,0 0x0] "after unmatched close"
+      anon [0,394 640x16]
+        inline <b> [0,0 0x0]
+          text [0,0 0x0] "bold with "
+          inline <b> [0,0 0x0]
+            text [0,0 0x0] "nested bold"
+          text [0,0 0x0] " tail"
+      block <p> [0,426 640x16] m=16,0,16,0
+        text [0,0 0x0] "block "
+      block <div> [0,458 640x16]
+        text [0,0 0x0] "inside p"
+      anon [0,474 640x16]
+        text [0,0 0x0] " after"

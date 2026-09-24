@@ -1,7 +1,11 @@
-[2J[Hbasic: & < > " '[0m
-numeric: © — — ABC[0m
-named: © ® ° ± × ÷ … —[0m
-quotes: “q” ‘s’ «x»[0m
-arrows: ← ↑ → ↓ • ™[0m
-unknown: &notanentity; &amp bare &#xZZ;[0m
+[2J[H[0mbasic: & < > " '[0m
 
+[0mnumeric: © — — ABC[0m
+
+[0mnamed: © ® ° ± × ÷ … —[0m
+
+[0mquotes: “q” ‘s’ «x»[0m
+
+[0marrows: ← ↑ → ↓ • ™[0m
+
+[0munknown: &notanentity; &amp bare &#xZZ;[0m

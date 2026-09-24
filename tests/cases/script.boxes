@@ -1,0 +1,11 @@
+root [0,0 640x48]
+  block <html> [0,0 640x48]
+    block <body> [0,0 640x48]
+      text [0,0 0x0] "
+"
+      iblock <button> [0,0 128x48] p=8,8,8,8 b=8,8,8,8
+        text [0,0 0x0] "OK"
+      text [0,0 0x0] "
+"
+      text [0,0 0x0] "
+"

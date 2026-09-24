@@ -1,0 +1,15 @@
+root [0,0 640x128] m=0,0,16,0
+  block <html> [0,16 640x112] m=16,0,16,0
+    block <body> [0,16 640x112]
+      block <p> [0,16 640x16] m=0,0,16,0
+        inline <a> [0,0 0x0]
+          text [0,0 0x0] "go next"
+        text [0,0 0x0] " and "
+        inline <a> [0,0 0x0]
+          text [0,0 0x0] "plain anchor"
+      anon [0,48 640x48]
+        iblock <button> [0,48 72x48] p=8,8,8,8 b=8,8,8,8
+          text [0,0 0x0] "press"
+      block <p> [0,112 640x16] m=16,0,0,0
+        inline <a> [0,0 0x0]
+          text [0,0 0x0] "upper link"

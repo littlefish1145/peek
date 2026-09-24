@@ -1,0 +1,29 @@
+<html>
+  <body>
+    @ body
+    = margin=0#1
+    <style>
+    - "\n"
+    <div class="pic">
+      @ .pic
+      = float=left#256 width=80px#256 height=48px#256 background-color=navy#256 color=white#256
+      - "L"
+    - "\n"
+    <div class="right">
+      @ .right
+      = float=right#256 width=64px#256 height=32px#256 background-color=green#256
+      - "R"
+    - "\n"
+    <p>
+      - "text should wrap around the floated boxes rather than starting below them,\nand it should keep flowing until the available width on each line runs out."
+    - "\n"
+    <p class="clear">
+      @ .clear
+      = clear=both#256 background-color=maroon#256 color=white#256
+      - "cleared to below both floats"
+    - "\n"
+    <pre>
+      @ pre
+      = margin=0#1 padding=8px#1 background-color=gray#1
+      - "\n  preformatted\n    indented   with   spaces\n"
+    - "\n"

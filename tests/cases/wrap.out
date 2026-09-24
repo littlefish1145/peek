@@ -1,7 +1,8 @@
-[2J[Hthe quick brown fox jumps over the lazy dog and keeps running right across the
-eighty column boundary of the terminal without any hard newline anywhere in this
-long paragraph of text[0m
-中文测试：这是一段比较长的中文内容，用来验证按显示宽度折行的逻辑是否正确，继续增
-加汉字直到超过八十列的宽度限制为止。[0m
-                              short centered line[0m
+[2J[H[0mthe quick brown fox jumps over the lazy dog and keeps running right across the[0m
+[0meighty column boundary of the terminal without any hard newline anywhere in this[0m
+[0mlong paragraph of text[0m
 
+[0m中文测试：这是一段比较长的中文内容，用来验证按显示宽度折行的逻辑是否正确，继续增[0m
+[0m加汉字直到超过八十列的宽度限制为止。[0m
+
+[0m                              short centered line[0m

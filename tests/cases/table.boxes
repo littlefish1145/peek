@@ -1,0 +1,36 @@
+root [0,0 640x240] m=0,0,16,0
+  block <html> [0,0 640x240] m=0,0,16,0
+    block <body> [0,0 640x240]
+      table <table> [0,0 288x208]
+        caption <caption> [0,0 288x16]
+          text [0,0 0x0] "quarterly numbers"
+        rowgroup <thead> [0,0 0x0]
+          row <tr> [0,0 0x0]
+            cell <th> [0,16 112x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "region"
+            cell <th> [112,16 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "q1"
+            cell <th> [200,16 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "q2"
+        rowgroup <tbody> [0,0 0x0]
+          row <tr> [0,0 0x0]
+            cell <td> [0,64 112x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "north"
+            cell <td> [112,64 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "120"
+            cell <td> [200,64 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "140"
+          row <tr> [0,0 0x0]
+            cell <td> [0,112 112x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "south"
+            cell <td> [112,112 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "90"
+            cell <td> [200,112 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "110"
+          row <tr> [0,0 0x0]
+            cell <td> [0,160 200x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "combined"
+            cell <td> [200,160 88x48] p=8,8,8,8 b=8,8,8,8
+              text [0,0 0x0] "460"
+      block <p> [0,224 640x16] m=16,0,0,0
+        text [0,0 0x0] "after the table"

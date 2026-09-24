@@ -1,0 +1,32 @@
+<style>
+.q::before { content: "[q]"; color: red; }
+.q::after { content: " (end)"; font-weight: bold; }
+li::before { content: "- "; }
+a.ext::after { content: " (" attr(href) ")"; }
+.none::before { content: none; }
+.empty::before { content: ""; }
+.esc::before { content: "A\2014 B"; }
+.emoji::before { content: "\1F600!"; }
+.bad::before { content: "x\0 y"; }
+.hexnl::before { content: "a\A b"; }
+.multi::before { content: "1" attr(data-x) "2"; }
+.gone::before { content: "hidden"; display: none; }
+.override::before { content: "low"; }
+.override.spec::before { content: "high"; }
+.single:after { content: " legacy-colon"; }
+.nested > b::before { content: ">"; }
+</style>
+<p class="q">text</p>
+<ul><li>one<li>two</ul>
+<a class="ext" href="x.html">link</a>
+<p class="none">no pseudo</p>
+<p class="empty">empty pseudo</p>
+<p class="esc">escape</p>
+<p class="emoji">emoji escape</p>
+<p class="bad">null escape</p>
+<p class="hexnl">hex newline</p>
+<p class="multi" data-x="=M=">concat</p>
+<p class="gone">display none pseudo</p>
+<p class="override spec">specificity</p>
+<p class="single">legacy</p>
+<p class="nested"><b>x</b></p>

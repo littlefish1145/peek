@@ -1,0 +1,72 @@
+<html>
+  <body>
+    @ body
+    = margin=0#1
+    <style>
+    - "\n"
+    <div class="row">
+      @ .row
+      = display=flex#256 gap=8px#256 align-items=stretch#256
+      - "\n  "
+      <div class="f1">
+        @ .f1
+        = flex=1#256 background-color=navy#256 color=white#256
+        - "flex 1"
+      - "\n  "
+      <div class="f2">
+        @ .f2
+        = flex=2#256 background-color=green#256
+        - "flex 2 grows twice as much"
+      - "\n"
+    - "\n"
+    <div class="center">
+      @ .center
+      = display=flex#256 justify-content=center#256 gap=8px#256
+      - "\n  "
+      <div class="pos">
+        @ .pos
+        = width=80px#256 background-color=maroon#256
+        - "a"
+      - "\n  "
+      <div class="pos">
+        @ .pos
+        = width=80px#256 background-color=maroon#256
+        - "b"
+      - "\n"
+    - "\n"
+    <div class="grid">
+      @ .grid
+      = display=grid#256 grid-template-columns=80px 1fr 2fr#256 gap=8px#256
+      - "\n  "
+      <div class="g">
+        @ .g
+        = background-color=teal#256
+        - "c1"
+      <div class="g">
+        @ .g
+        = background-color=teal#256
+        - "c2"
+      <div class="g">
+        @ .g
+        = background-color=teal#256
+        - "c3"
+      - "\n  "
+      <div class="wide">
+        @ .wide
+        = grid-column=1 / span 3#256 background-color=olive#256
+        - "spanning all three columns"
+      - "\n  "
+      <div class="g">
+        @ .g
+        = background-color=teal#256
+        - "d1"
+      <div class="g">
+        @ .g
+        = background-color=teal#256
+        - "d2"
+      <div class="g">
+        @ .g
+        = background-color=teal#256
+        - "d3"
+      - "\n"
+    - "\n"

@@ -1,0 +1,108 @@
+<script>
+function L(s) { console.log(s); }
+var B = 'http://127.0.0.1:__PORT__';
+
+function one(v) { return String(v).split('\r\n').join('^').split('\n').join('|'); }
+function hkeys(s) {
+    var k = [];
+    s.split('\r\n').forEach(function (l) { var i = l.indexOf(':'); if (i > 0) k.push(l.slice(0, i)); });
+    return k.sort().join(',');
+}
+
+function sse(url, want) {
+    return new Promise(function (ok) {
+        var nm = 0, done = false;
+        var es = new EventSource(url);
+        es.onopen = function () { L('es open ' + es.readyState + ' ' + es.url); };
+        es.onmessage = function (e) {
+            nm++;
+            L('msg ' + nm + ' [' + one(e.data) + '] last ' + es.lastEventId + ' origin ' + e.origin);
+            if (nm >= want && !done) {
+                done = true;
+                es.close();
+                L('es close ' + es.readyState);
+                ok();
+            }
+        };
+        es.addEventListener('ping', function (e) { L('ping [' + e.data + '] id ' + es.lastEventId); });
+        es.onerror = function (e) {
+            if (done) return;
+            done = true;
+            L('es end ' + es.readyState + ' ' + ((e && e.message) || 'closed'));
+            ok();
+        };
+    });
+}
+
+async function main() {
+    var r = await fetch(B + '/text', { headers: { 'X-Custom': 'abc', 'Accept': 'text/plain' } });
+    L('status ' + r.status + ' ok ' + r.ok);
+    L('url ' + r.url);
+    L('ct ' + r.headers.get('content-type') + ' peek ' + r.headers.get('x-peek'));
+    L('miss ' + String(r.headers.get('nope')) + ' has ' + r.headers.has('content-length')
+      + ' keys ' + Object.keys(r.headers).length);
+    L('text ' + (await r.text()));
+
+    var h = await (await fetch(B + '/hdr', { method: 'POST', body: 'q=1&x=2', headers: { 'X-Custom': 'abc' } })).text();
+    L('reqhdr ' + one(h));
+
+    var j = await (await fetch(B + '/json')).json();
+    L('json ' + j.a + ' ' + j.b.join(','));
+
+    try { await fetch(B + '/fail'); L('fail resolved?!'); }
+    catch (e) { L('fail ' + e.name + ' ' + e.message); }
+
+    var fd = new FormData();
+    fd.append('a', '1 2&=');
+    fd.append('b', 'x');
+    fd.append('a', '3');
+    L('form size ' + fd.size + ' get ' + fd.get('a') + ' all ' + fd.getAll('a').join(';')
+      + ' has ' + fd.has('b') + fd.has('z'));
+    var fr = await fetch(B + '/raw', { method: 'POST', body: fd });
+    L('form ct ' + fr.headers.get('x-req-ct'));
+    L('form body ' + (await fr.text()));
+
+    var fd2 = new FormData();
+    fd2.append('note', 'hi there');
+    fd2.append('file', new File(['line1\nend'], 't.txt', { type: 'text/plain' }));
+    var mr = await fetch(B + '/raw', { method: 'PUT', body: fd2 });
+    var ctc = mr.headers.get('x-req-ct');
+    var mb = await mr.text();
+    L('mp kind ' + ctc.split(';')[0] + ' len ' + mb.length);
+    L('mp body ' + one(mb.split(ctc.split('boundary=')[1]).join('@')));
+
+    var br = await fetch(B + '/raw', { method: 'POST', body: new Blob(['zz'], { type: 'text/zzz' }) });
+    L('blob ct ' + br.headers.get('x-req-ct') + ' body ' + (await br.text()));
+
+    await new Promise(function (ok) {
+        var x = new XMLHttpRequest();
+        x.open('POST', B + '/text');
+        x.setRequestHeader('X-T', '7');
+        x.onload = function () {
+            L('xhr ' + x.status + ' ' + x.getResponseHeader('x-peek') + ' [' + x.responseText + ']');
+            L('xhr hdrs ' + hkeys(x.getAllResponseHeaders()) + ' null ' + String(x.getResponseHeader('nope')));
+            ok();
+        };
+        x.onerror = function () { L('xhr err ' + x.status); ok(); };
+        x.send('hello=1');
+    });
+
+    var x2 = new XMLHttpRequest();
+    x2.open('GET', B + '/hdr');
+    x2.onload = function () { L('xhr get ' + x2.status + ' ' + one(x2.responseText)); };
+    x2.onerror = function () { L('xhr get err'); };
+    x2.send();
+
+    var c = new AbortController();
+    c.abort();
+    try { await fetch(B + '/text', { signal: c.signal }); L('abort resolved?!'); }
+    catch (e) { L('abort ' + e.name); }
+
+    await sse(B + '/sse', 3);
+    await sse(B + '/sseend', 3);
+    L('alldone');
+}
+
+main();
+</script>
+<p>http</p>

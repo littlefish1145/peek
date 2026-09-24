@@ -1,0 +1,18 @@
+root [0,0 640x192]
+  block <html> [0,16 640x176] m=16,0,0,0
+    block <body> [0,16 640x176]
+      block <p> [0,16 640x16] m=0,0,16,0
+        text [0,0 0x0] "id wins over 20 classes"
+      block <p> [0,48 640x16] m=16,0,16,0
+        text [0,0 0x0] "author !important wins o"
+      block <div> [0,80 640x16] m=16,0,16,0
+        block <p> [0,80 640x16]
+          text [0,0 0x0] "inline wins over id desc"
+      block <p> [0,112 640x16] m=16,0,16,0
+        text [0,0 0x0] "later source order wins "
+      block <p> [0,144 640x16] m=16,0,16,0
+        text [0,0 0x0] "last duplicate rule wins"
+      anon [0,176 640x16]
+        inline <b> [0,0 0x0]
+          inline <i> [0,0 0x0]
+            text [0,0 0x0] "x"

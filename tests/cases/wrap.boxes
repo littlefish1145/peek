@@ -1,0 +1,9 @@
+root [0,0 640x144] m=0,0,16,0
+  block <html> [0,16 640x128] m=16,0,16,0
+    block <body> [0,16 640x128]
+      block <p> [0,16 640x48] m=0,0,16,0
+        text [0,0 0x0] "the quick brown fox jump"
+      block <p> [0,80 640x32] m=16,0,16,0
+        text [0,0 0x0] "中文测试：这是一"
+      block <p> [0,128 640x16] m=16,0,0,0
+        text [0,0 0x0] "short centered line"

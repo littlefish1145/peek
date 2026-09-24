@@ -1,0 +1,20 @@
+<style>
+.k1.k2.k3.k4.k5.k6.k7.k8.k9.k10.k11.k12.k13.k14.k15.k16.k17.k18.k19.k20 { color: blue; }
+#many { color: red; }
+.q1.q2.q3 { color: orange !important; }
+#imp { color: red; }
+#inl { color: red; }
+.a #inl { color: lime; }
+.two { color: navy; }
+.one { color: teal; }
+.same { color: aqua; }
+.same { color: silver; }
+b i { font-weight: normal; }
+i { font-weight: bold; }
+</style>
+<p id="many" class="k1 k2 k3 k4 k5 k6 k7 k8 k9 k10 k11 k12 k13 k14 k15 k16 k17 k18 k19 k20">id wins over 20 classes</p>
+<p id="imp" class="q1 q2 q3">author !important wins over id</p>
+<div class="a"><p id="inl" style="color: green">inline wins over id descendant</p></div>
+<p class="one two">later source order wins on tie</p>
+<p class="same">last duplicate rule wins</p>
+<b><i>x</i></b>

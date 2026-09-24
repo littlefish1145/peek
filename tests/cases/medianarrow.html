@@ -1,0 +1,21 @@
+<style>
+@media screen { body { color: green; } }
+@media print { body { color: red; } }
+@media (min-width: 1000px) { p { color: aqua; } }
+@media (max-width: 600px) { p { color: navy; } }
+@media screen and (min-width: 2000px) { h1 { display: none; } }
+@media (orientation: landscape) { h2 { font-weight: bold; } }
+@media not all and (min-width: 100px) { h3 { color: red; } }
+@media (min-width: 10em), (max-width: 1px) { h4 { color: lime; } }
+@media all and (max-width: 1280px) { h5 { color: teal; } }
+@media (max-width: 50%) { h6 { color: olive; } }
+</style>
+<body>
+<p>para</p>
+<h1>one</h1>
+<h2>two</h2>
+<h3>three</h3>
+<h4>four</h4>
+<h5>five</h5>
+<h6>six</h6>
+</body>

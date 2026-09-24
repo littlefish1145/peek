@@ -1,0 +1,16 @@
+<html>
+  <body>
+    - "\n"
+    <span id="verylongidentifier1" class="verylegiclasname1">
+      @ #verylongidentifier1 | .verylegiclasname1
+      = color=red#65536 font-style=italic#256
+      - "one"
+    - "\n"
+    <span id="verylongidentifier2" class="verylegiclasname2">
+      @ #verylongidentifier2 | .verylegiclasname2
+      = color=blue#65536 font-weight=bold#256
+      - "two"
+    - "\n"
+    <style>
+    - "\n"
+    - "\n"

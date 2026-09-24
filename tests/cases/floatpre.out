@@ -1,0 +1,9 @@
+[2J[H[0m[38;5;7mL[0m[48;5;18m         [0mtext should wrap around the floated boxes rather than starting below R[0m
+[0m[48;5;18m          [0mthem, and it should keep flowing until the available width on each   [0m[48;5;2m [0m
+[0m[48;5;18m          [0mline runs out.[0m
+
+[0m[38;5;7mcleared to below both floats[0m[48;5;88m                                                    [0m
+
+[0m[48;5;244m [0m  preformatted[0m[48;5;244m                                                                 [0m
+[0m[48;5;244m [0m    indented   with   spaces[0m[48;5;244m                                                   [0m
+[0m[48;5;244m                                                                                [0m

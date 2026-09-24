@@ -1,0 +1,51 @@
+<html>
+  <body>
+    @ body
+    = color=silver#1
+    - "\n"
+    <h1>
+      @ h1
+      = font-weight=bold#-1 color=red#1
+      - "heading one"
+    - "\n"
+    <p>
+      = color=silver#-1
+      - "first para"
+    - "\n"
+    <p>
+      @ p + p
+      = color=green#2
+      - "second para"
+    - "\n"
+    <ul>
+      = color=silver#-1
+      <li>
+        = color=silver#-1
+        - "alpha"
+      <li>
+        @ li:last-child
+        = color=silver#-1 text-decoration=line-through#257
+        - "beta"
+    - "\n"
+    <p class="gone">
+      @ ul ~ p | .gone
+      = color=silver#-1 display=none#256 font-style=italic#2
+      - "hidden text"
+    - "\n"
+    <div data-user="user1">
+      @ div[data-user^="u"]
+      = color=aqua#257
+      - "prefix"
+    - "\n"
+    <div data-user="admin">
+      @ div[data-user$="n"]
+      = color=navy#257
+      - "suffix"
+    - "\n"
+    <hr>
+      = color=silver#-1
+    - "\n"
+    <style>
+      = color=silver#-1
+    - "\n"
+    - "\n"

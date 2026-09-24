@@ -1,0 +1,7 @@
+go next and plain anchor
+
+│───────│
+│ press │
+│───────│
+
+upper link

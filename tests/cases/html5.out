@@ -1,0 +1,22 @@
+[2J[H[0mfirst paragraphinline still first[0m
+
+[0msecond paragraph[0m
+
+[0m  •  one[0m
+[0m  •  two[0m
+[0m  •  THREE[0m
+
+[0mterm[0m
+[0m     definition[0m
+[0mterm2[0m
+[0m     def2[0m
+
+[0m a  b[0m
+[0m [0m[1mh1[0m [0m[1mh2 [0m
+[0m[38;5;7m│───────────││──────────────────────│[0m
+[0m[38;5;7m│[0m one two   [0m[38;5;7m││[0m raw <b>text</b> here [0m[38;5;7m│[0m
+[0m[38;5;7m│[0m           [0m[38;5;7m││[0m                      [0m[38;5;7m│[0m
+[0m[38;5;7m│───────────││──────────────────────│[0m
+[0munclosed p before unmatched end tag[0m
+
+[0mafter unmatched close[0m

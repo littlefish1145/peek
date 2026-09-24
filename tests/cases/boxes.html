@@ -1,0 +1,19 @@
+<style>
+body { margin: 0; }
+.box {
+  width: 200px;
+  padding: 8px;
+  border: 8px solid red;
+  margin: 8px;
+  background-color: navy;
+  color: white;
+}
+.inline { background-color: green; }
+#rel { position: relative; left: 16px; top: 8px; }
+#abs { position: absolute; left: 320px; top: 0; width: 120px; background-color: maroon; }
+</style>
+<div class="box">box model: 200px content + 8px padding + 8px border</div>
+<p>collapsing: <span class="inline">inline background</span> and text</p>
+<p>second paragraph — one blank row between</p>
+<p id="rel">relatively offset by 2 columns and half a row</p>
+<div id="abs">absolutely positioned</div>

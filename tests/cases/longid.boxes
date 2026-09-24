@@ -1,0 +1,17 @@
+root [0,0 640x16]
+  block <html> [0,0 640x16]
+    block <body> [0,0 640x16]
+      text [0,0 0x0] "
+"
+      inline <span> [0,0 0x0]
+        text [0,0 0x0] "one"
+      text [0,0 0x0] "
+"
+      inline <span> [0,0 0x0]
+        text [0,0 0x0] "two"
+      text [0,0 0x0] "
+"
+      text [0,0 0x0] "
+"
+      text [0,0 0x0] "
+"
