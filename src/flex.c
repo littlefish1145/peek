@@ -237,7 +237,7 @@ static void parse_tracks(const char *v, Tracks *out, int base) {
     while (*p) {
         while (*p == ' ') p++;
         if (!*p) break;
-        if (!strncasecmp(p, "repeat(", 7)) {
+        if (!pk_strncasecmp(p, "repeat(", 7)) {
             const char *q = p + 7;
             int rep = atoi(q);
             const char *cm = strchr(q, ',');
@@ -254,7 +254,7 @@ static void parse_tracks(const char *v, Tracks *out, int base) {
             continue;
         }
         Track tr = {TR_AUTO, 0};
-        if (!strncasecmp(p, "minmax(", 7)) {
+        if (!pk_strncasecmp(p, "minmax(", 7)) {
             const char *cm = strchr(p, ',');
             const char *cl = strchr(p, ')');
             if (cm) {
@@ -267,13 +267,13 @@ static void parse_tracks(const char *v, Tracks *out, int base) {
                 }
             }
             p = cl ? cl + 1 : p + strlen(p);
-        } else if (!strncasecmp(p, "auto", 4)) { p += 4; }
-        else if (!strncasecmp(p, "min-content", 11)) { p += 11; }
-        else if (!strncasecmp(p, "max-content", 11)) { p += 11; }
+        } else if (!pk_strncasecmp(p, "auto", 4)) { p += 4; }
+        else if (!pk_strncasecmp(p, "min-content", 11)) { p += 11; }
+        else if (!pk_strncasecmp(p, "max-content", 11)) { p += 11; }
         else {
             const char *s = p;
             while (*p && *p != ' ') p++;
-            if (p - s >= 2 && (!strncasecmp(p - 2, "fr", 2))) {
+            if (p - s >= 2 && (!pk_strncasecmp(p - 2, "fr", 2))) {
                 char tmp[32];
                 size_t l = (size_t)(p - s - 2);
                 if (l > 30) l = 30;

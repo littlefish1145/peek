@@ -1,13 +1,6 @@
 #include "peek.h"
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <poll.h>
-#include <strings.h>
-#include <sys/socket.h>
-#include <sys/time.h>
+#include "platform.h"
 #include <time.h>
-#include <unistd.h>
 #include <mbedtls/net_sockets.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/x509_crt.h>
@@ -17,13 +10,13 @@
 #define NS_TMO 10000
 
 int url_is(const char *s) {
-    return !strncasecmp(s, "http://", 7) || !strncasecmp(s, "https://", 8);
+    return !pk_strncasecmp(s, "http://", 7) || !pk_strncasecmp(s, "https://", 8);
 }
 
 static int uparse(const char *u, char *host, char *hh, int *port, char *path, int *tls) {
     int t = 0, pl = 7;
-    if (!strncasecmp(u, "https://", 8)) t = 1, pl = 8;
-    else if (strncasecmp(u, "http://", 7)) return 0;
+    if (!pk_strncasecmp(u, "https://", 8)) t = 1, pl = 8;
+    else if (pk_strncasecmp(u, "http://", 7)) return 0;
     const char *a = u + pl, *e = a;
     while (*e && *e != '/') e++;
     const char *hs = a, *he = e, *cs = 0;
@@ -104,41 +97,37 @@ char *url_join(const char *b, const char *h) {
 }
 
 static long clock_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (long)pk_now_ms();
 }
 
-static int conn_tcp(const char *host, int port, int nb, int tms) {
-    struct addrinfo hint = {0}, *r, *p;
-    hint.ai_family = AF_UNSPEC;
-    hint.ai_socktype = SOCK_STREAM;
+static pk_socket_t conn_tcp(const char *host, int port, int nb, int tms) {
+    if (pk_socket_init()) return PK_INVALID_SOCKET;
     char ps[8];
     snprintf(ps, sizeof ps, "%d", port);
-    if (getaddrinfo(host, ps, &hint, &r)) return -1;
-    int fd = -1;
-    for (p = r; p; p = p->ai_next) {
-        fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (fd < 0) continue;
-        fcntl(fd, F_SETFL, O_NONBLOCK);
-        int c = connect(fd, p->ai_addr, p->ai_addrlen);
-        if (c && errno != EINPROGRESS) { close(fd); fd = -1; continue; }
-        if (c) {
-            struct pollfd pf = {fd, POLLOUT, 0};
-            if (poll(&pf, 1, tms) <= 0) { close(fd); fd = -1; continue; }
-            int e = 0;
-            socklen_t el = sizeof e;
-            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &e, &el) < 0 || e) { close(fd); fd = -1; continue; }
+    pk_addrinfo *list;
+    if (pk_resolve(host, ps, &list)) return PK_INVALID_SOCKET;
+    pk_socket_t fd = PK_INVALID_SOCKET;
+    for (pk_addrinfo *p = pk_addrinfo_first(list); p; p = pk_addrinfo_next(p)) {
+        fd = pk_socket_create(pk_addrinfo_family(p), pk_addrinfo_type(p), pk_addrinfo_protocol(p));
+        if (fd == PK_INVALID_SOCKET) continue;
+        pk_socket_nonblock(fd, 1);
+        int c = pk_socket_connect(fd, pk_addrinfo_address(p), pk_addrinfo_length(p));
+        if (c < 0) { pk_socket_close(fd); fd = PK_INVALID_SOCKET; continue; }
+        if (c > 0) {
+            if (pk_socket_wait(fd, PK_POLL_OUT, tms) <= 0 ||
+                pk_socket_error(fd)) {
+                pk_socket_close(fd);
+                fd = PK_INVALID_SOCKET;
+                continue;
+            }
         }
         break;
     }
-    freeaddrinfo(r);
-    if (fd < 0) return -1;
+    pk_resolve_free(list);
+    if (fd == PK_INVALID_SOCKET) return fd;
     if (nb) return fd;
-    fcntl(fd, F_SETFL, 0);
-    struct timeval tv = {10, 0};
-    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
-    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+    pk_socket_nonblock(fd, 0);
+    pk_socket_set_timeout(fd, 10);
     return fd;
 }
 
@@ -146,24 +135,23 @@ typedef struct {
     mbedtls_ssl_context ssl;
     mbedtls_ssl_config cfg;
     mbedtls_x509_crt ca;
-    int fd, tls, nb, ini;
+    pk_socket_t fd;
+    int tls, nb, ini;
 } Tls;
 
 static int mb_send(void *ctx, const unsigned char *b, size_t n) {
     Tls *t = ctx;
-    ssize_t w = send(t->fd, b, n, 0);
-    if (w >= 0) return (int)w;
-    if (t->nb && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
-        return MBEDTLS_ERR_SSL_WANT_WRITE;
+    int w = pk_socket_send(t->fd, b, n);
+    if (w >= 0) return w;
+    if (t->nb && pk_socket_would_block()) return MBEDTLS_ERR_SSL_WANT_WRITE;
     return MBEDTLS_ERR_NET_SEND_FAILED;
 }
 
 static int mb_recv(void *ctx, unsigned char *b, size_t n) {
     Tls *t = ctx;
-    ssize_t r = recv(t->fd, b, n, 0);
-    if (r > 0) return (int)r;
-    if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
-        return MBEDTLS_ERR_SSL_WANT_READ;
+    int r = pk_socket_recv(t->fd, b, n);
+    if (r > 0) return r;
+    if (r < 0 && pk_socket_would_block()) return MBEDTLS_ERR_SSL_WANT_READ;
     return MBEDTLS_ERR_NET_RECV_FAILED;
 }
 
@@ -177,8 +165,9 @@ static int tls_up(Tls *t, const char *host) {
     mbedtls_ssl_config_init(&t->cfg);
     mbedtls_x509_crt_init(&t->ca);
     t->ini = 1;
-    if (mbedtls_x509_crt_parse_file(&t->ca, "/etc/ssl/certs/ca-certificates.crt") < 0 &&
-        mbedtls_x509_crt_parse_file(&t->ca, "/etc/ssl/cert.pem") < 0) {
+    char ca[1024];
+    if (!pk_tls_ca_path(ca, sizeof ca) ||
+        mbedtls_x509_crt_parse_file(&t->ca, ca) < 0) {
         fprintf(stderr, "peek: tls: no ca bundle\n");
         return 0;
     }
@@ -200,8 +189,7 @@ static int tls_up(Tls *t, const char *host) {
         if (!t->nb) continue;
         int left = (int)(dl - clock_ms());
         if (left <= 0) { fprintf(stderr, "peek: tls: handshake timeout\n"); return 0; }
-        struct pollfd pf = {t->fd, (short)(r == MBEDTLS_ERR_SSL_WANT_WRITE ? POLLOUT : POLLIN), 0};
-        poll(&pf, 1, left);
+        pk_socket_wait(t->fd, r == MBEDTLS_ERR_SSL_WANT_WRITE ? PK_POLL_OUT : PK_POLL_IN, left);
     }
     return 1;
 }
@@ -222,9 +210,9 @@ static long io_send(Tls *t, const char *b, size_t n) {
         if (r == MBEDTLS_ERR_SSL_WANT_READ || r == MBEDTLS_ERR_SSL_WANT_WRITE) return 0;
         return -1;
     }
-    ssize_t w = send(t->fd, b, n, 0);
-    if (w > 0) return (long)w;
-    if (w < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) return 0;
+    int w = pk_socket_send(t->fd, b, n);
+    if (w > 0) return w;
+    if (w < 0 && pk_socket_would_block()) return 0;
     return -1;
 }
 
@@ -236,9 +224,9 @@ static long io_read(Tls *t, char *b, size_t n) {
             r == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) return 0;
         return -1;
     }
-    ssize_t r = recv(t->fd, b, n, 0);
-    if (r > 0) return (long)r;
-    if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) return 0;
+    int r = pk_socket_recv(t->fd, b, n);
+    if (r > 0) return r;
+    if (r < 0 && pk_socket_would_block()) return 0;
     return -1;
 }
 
@@ -249,8 +237,8 @@ struct NetStream {
 };
 
 NetStream *ns_connect(const char *host, int port, int tls) {
-    int fd = conn_tcp(host, port, 1, NS_TMO);
-    if (fd < 0) return 0;
+    pk_socket_t fd = conn_tcp(host, port, 1, NS_TMO);
+    if (fd == PK_INVALID_SOCKET) return 0;
     NetStream *s = calloc(1, sizeof *s);
     if (!s) oom();
     s->t.fd = fd;
@@ -259,8 +247,8 @@ NetStream *ns_connect(const char *host, int port, int tls) {
     return s;
 }
 
-int ns_fd(NetStream *s) {
-    return s ? s->t.fd : -1;
+pk_socket_t ns_fd(NetStream *s) {
+    return s ? s->t.fd : PK_INVALID_SOCKET;
 }
 
 long ns_read(NetStream *s, char *buf, long n) {
@@ -284,7 +272,7 @@ void ns_close(NetStream *s) {
     if (!s) return;
     if (s->t.tls && s->t.nb) mbedtls_ssl_close_notify(&s->t.ssl);
     tls_done(&s->t);
-    if (s->t.fd >= 0) close(s->t.fd);
+    if (s->t.fd != PK_INVALID_SOCKET) pk_socket_close(s->t.fd);
     free(s->pb);
     free(s);
 }
@@ -315,7 +303,7 @@ static int hdr_has(const char *hdrs, const char *name) {
     int nl = (int)strlen(name);
     for (const char *p = hdrs; *p; p++) {
         if (p != hdrs && p[-1] != '\n') continue;
-        if (!strncasecmp(p, name, (size_t)nl)) {
+        if (!pk_strncasecmp(p, name, (size_t)nl)) {
             const char *q = p + nl;
             while (*q == ' ') q++;
             if (*q == ':') return 1;
@@ -362,8 +350,8 @@ static char *fetch1(const char *host, const char *hh, int port, const char *path
     *nurl = 0;
     *len = 0;
     if (head) *head = 0;
-    int fd = conn_tcp(host, port, 0, NS_TMO);
-    if (fd < 0) { fprintf(stderr, "peek: connect %s:%d\n", host, port); return 0; }
+    pk_socket_t fd = conn_tcp(host, port, 0, NS_TMO);
+    if (fd == PK_INVALID_SOCKET) { fprintf(stderr, "peek: connect %s:%d\n", host, port); return 0; }
     Tls T = {0};
     T.fd = fd;
     char *buf = 0, *res = 0, *req = 0;
@@ -421,10 +409,10 @@ static char *fetch1(const char *host, const char *hh, int port, const char *path
             while (v < le && *v == ' ') v++;
             if (!strcmp(l, "content-length")) clen = atol(v);
             else if (!strcmp(l, "transfer-encoding") &&
-                     (size_t)(le - v) >= 7 && !strncasecmp(v, "chunked", 7)) chunked = 1;
+                     (size_t)(le - v) >= 7 && !pk_strncasecmp(v, "chunked", 7)) chunked = 1;
             else if (!strcmp(l, "location") && v < le) { *le = 0; loc = v; }
             else if (!strcmp(l, "content-encoding") &&
-                     (size_t)(le - v) >= 8 && strncasecmp(v, "identity", 8)) enc = 1;
+                     (size_t)(le - v) >= 8 && pk_strncasecmp(v, "identity", 8)) enc = 1;
         }
         l = e + 1;
     }
@@ -445,7 +433,7 @@ static char *fetch1(const char *host, const char *hh, int port, const char *path
     buf = 0;
 out:
     tls_done(&T);
-    close(fd);
+    pk_socket_close(fd);
     free(req);
     free(buf);
     return res;
@@ -470,7 +458,7 @@ NetStream *http_open(const char *method, const char *url, const char *hdrs,
     NetStream *s = calloc(1, sizeof *s);
     if (!s) oom();
     s->t.fd = conn_tcp(host, port, 1, NS_TMO);
-    if (s->t.fd < 0) { free(s); return 0; }
+    if (s->t.fd == PK_INVALID_SOCKET) { free(s); return 0; }
     s->t.nb = 1;
     if (tls && !tls_up(&s->t, host)) { ns_close(s); return 0; }
     int rl = 0;
@@ -482,8 +470,7 @@ NetStream *http_open(const char *method, const char *url, const char *hdrs,
         if (w > 0) { off += (size_t)w; continue; }
         long left = dl - clock_ms();
         if (w < 0 || left <= 0) { free(req); ns_close(s); return 0; }
-        struct pollfd pf = { s->t.fd, POLLIN | POLLOUT, 0 };
-        poll(&pf, 1, left > 200 ? 200 : (int)left);
+        pk_socket_wait(s->t.fd, PK_POLL_IN | PK_POLL_OUT, left > 200 ? 200 : (int)left);
     }
     free(req);
     size_t cap = 8192, n = 0;
@@ -506,8 +493,7 @@ NetStream *http_open(const char *method, const char *url, const char *hdrs,
         }
         long left = dl - clock_ms();
         if (r < 0 || left <= 0) break;
-        struct pollfd pf = { s->t.fd, POLLIN, 0 };
-        poll(&pf, 1, left > 200 ? 200 : (int)left);
+        pk_socket_wait(s->t.fd, PK_POLL_IN, left > 200 ? 200 : (int)left);
     }
     if (!hd || memcmp(buf, "HTTP/", 5)) { free(buf); ns_close(s); return 0; }
     int code = atoi(buf + 9);

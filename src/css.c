@@ -283,7 +283,7 @@ static char *skip_ws(char *p, char *e) {
 }
 
 static int span_is(const char *s, int n, const char *w) {
-    return n == (int)strlen(w) && !strncasecmp(s, w, (size_t)n);
+    return n == (int)strlen(w) && !pk_strncasecmp(s, w, (size_t)n);
 }
 
 static char *close_paren(char *p, char *e) {
@@ -363,8 +363,8 @@ static int feat_eval(char *s, char *e) {
     int vl = (int)(e - vp);
     while (vl && (ISWS(vp[vl - 1]) || vp[vl - 1] == ')')) vl--;
     int cmp = 0, kind = 0, base = 0;
-    if (nl > 4 && !strncasecmp(s, "min-", 4)) s += 4, nl -= 4, cmp = 1;
-    else if (nl > 4 && !strncasecmp(s, "max-", 4)) s += 4, nl -= 4, cmp = 2;
+    if (nl > 4 && !pk_strncasecmp(s, "min-", 4)) s += 4, nl -= 4, cmp = 1;
+    else if (nl > 4 && !pk_strncasecmp(s, "max-", 4)) s += 4, nl -= 4, cmp = 2;
     if (span_is(s, nl, "width") || span_is(s, nl, "device-width")) kind = 1, base = VW;
     else if (span_is(s, nl, "height") || span_is(s, nl, "device-height")) kind = 2, base = VH;
     else if (span_is(s, nl, "orientation")) kind = 3;
@@ -376,7 +376,7 @@ static int feat_eval(char *s, char *e) {
     if (kind == 3) {
         int p = cmp == 1 ? 1 : cmp == 2 ? 0 : 1;
         int land = VW >= VH;
-        int want = vl >= 8 && !strncasecmp(vp, "landscape", 8);
+        int want = vl >= 8 && !pk_strncasecmp(vp, "landscape", 8);
         return p && land == want;
     }
     if (kind == 5) return 1;
@@ -618,7 +618,7 @@ static void parse_range(char *pos, char *end, char *media) {
         char *ps = skip_ws(pos, b);
         if (ps < b && *ps == '@') {
             int ll = (int)(b - ps);
-            if (ll >= 6 && !strncasecmp(ps, "@media", 6) &&
+            if (ll >= 6 && !pk_strncasecmp(ps, "@media", 6) &&
                 (ll == 6 || ISWS(ps[6]) || ps[6] == '('))
                 parse_range(b + 1, e, cond_add(ps + 6, b));
             pos = e + 1;
@@ -890,8 +890,8 @@ static int pseudo(const char *name, int nl, const char *arg, int al, Node *n) {
         int A, B;
         if (!parse_anb(arg, al, &A, &B)) return 0;
         sib_pos(n, &idx, &cnt, &tidx, &tcnt);
-        int oftype = nl >= 7 && !strncasecmp(name + nl - 7, "-of-type", 8);
-        int last = nl >= 9 && !strncasecmp(name + 4, "-last", 5);
+        int oftype = nl >= 7 && !pk_strncasecmp(name + nl - 7, "-of-type", 8);
+        int last = nl >= 9 && !pk_strncasecmp(name + 4, "-last", 5);
         int pos = (oftype ? tidx : idx) + 1;
         int tot = oftype ? tcnt : cnt;
         if (last) pos = tot - pos + 1;
@@ -1029,7 +1029,7 @@ static int attr_test(char *s, char *e, Node *n) {
     while (nl && ISWS(name[nl - 1])) nl--;
     const char *v = 0;
     for (int i = 0; i < n->nattr; i++)
-        if ((int)strlen(n->attrs[i].k) == nl && !strncasecmp(n->attrs[i].k, name, (size_t)nl)) {
+        if ((int)strlen(n->attrs[i].k) == nl && !pk_strncasecmp(n->attrs[i].k, name, (size_t)nl)) {
             v = n->attrs[i].v;
             break;
         }
@@ -1064,7 +1064,7 @@ static int match_compound(const char *c, Node *n) {
         if (isalpha((unsigned char)*p) || *p == '_') {
             const char *s = p;
             while (*p && (isalnum((unsigned char)*p) || *p == '-' || *p == '_' || *p == '%')) p++;
-            if (n->taglen != (int)(p - s) || strncasecmp(n->tag, s, (size_t)(p - s))) return -1;
+            if (n->taglen != (int)(p - s) || pk_strncasecmp(n->tag, s, (size_t)(p - s))) return -1;
             tags++;
             continue;
         }

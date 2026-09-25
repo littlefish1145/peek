@@ -6,7 +6,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "platform.h"
 #include <quickjs.h>
+
+static int pk_strncasecmp(const char *a, const char *b, size_t n) {
+    while (n--) {
+        unsigned char ca = (unsigned char)*a++;
+        unsigned char cb = (unsigned char)*b++;
+        if (ca >= 'A' && ca <= 'Z') ca = (unsigned char)(ca - 'A' + 'a');
+        if (cb >= 'A' && cb <= 'Z') cb = (unsigned char)(cb - 'A' + 'a');
+        if (ca != cb) return ca < cb ? -1 : 1;
+        if (!ca) return 0;
+    }
+    return 0;
+}
 
 #define WS ((1u << 9) | (1u << 10) | (1u << 11) | (1u << 12) | (1u << 13))
 #define ISWS(c) ((c) == ' ' || ((unsigned)(c) < 32 && WS >> (c) & 1))
@@ -155,7 +168,7 @@ typedef struct NetStream NetStream;
 NetStream *http_open(const char *method, const char *url, const char *hdrs,
                      char **head_out, int *code_out);
 NetStream *ns_connect(const char *host, int port, int tls);
-int ns_fd(NetStream *);
+pk_socket_t ns_fd(NetStream *);
 long ns_read(NetStream *, char *buf, long n);
 long ns_write(NetStream *, const char *buf, long n);
 void ns_close(NetStream *);

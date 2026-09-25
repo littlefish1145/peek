@@ -1,8 +1,5 @@
 #include "peek.h"
-#include <fcntl.h>
-#include <strings.h>
-#include <time.h>
-#include <unistd.h>
+#include "platform.h"
 #include <mbedtls/base64.h>
 #include "ws.h"
 
@@ -34,12 +31,9 @@ static Ws *LIST, *DEADL, *GRAV;
 static Ws **VEC;
 static size_t CVEC;
 static int INP;
-static uint64_t RX;
 
 static long now_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (long)pk_now_ms();
 }
 
 static uint32_t rol(uint32_t v, unsigned k) {
@@ -95,27 +89,9 @@ static int b64(const unsigned char *in, size_t n, char *out, size_t osz) {
 }
 
 static void rnd(unsigned char *b, size_t n) {
-    int f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-    if (f >= 0) {
-        size_t g = 0;
-        while (g < n) {
-            ssize_t r = read(f, b + g, n - g);
-            if (r <= 0) break;
-            g += (size_t)r;
-        }
-        close(f);
-        if (g == n) return;
-    }
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    if (!RX)
-        RX = ((uint64_t)ts.tv_sec << 31) ^ ((uint64_t)ts.tv_nsec << 7) ^
-             (uint64_t)(uintptr_t)b ^ ((uint64_t)getpid() << 17) ^ 0x9E3779B97F4A7C15ull;
-    for (size_t i = 0; i < n; i++) {
-        RX ^= RX << 13;
-        RX ^= RX >> 7;
-        RX ^= RX << 17;
-        b[i] = (unsigned char)(RX >> 33);
+    if (pk_random(b, n)) {
+        fprintf(stderr, "peek: secure random source failed\n");
+        abort();
     }
 }
 
@@ -147,7 +123,7 @@ static int hv(const char *blk, size_t bl, const char *name, char *v, size_t vs) 
         while (ks < le && (*ks == ' ' || *ks == '\t')) ks++;
         const char *c = memchr(ks, ':', (size_t)(le - ks));
         const char *nx = eol + 1;
-        if (c && (size_t)(c - ks) == nlen && !strncasecmp(ks, name, nlen)) {
+        if (c && (size_t)(c - ks) == nlen && !pk_strncasecmp(ks, name, nlen)) {
             const char *s = c + 1;
             while (s < le && (*s == ' ' || *s == '\t')) s++;
             size_t l = (size_t)(le - s);
@@ -509,8 +485,8 @@ void ws_poll(void) {
 
 static int wparse(const char *u, char *host, char *hh, int *port, char *path, int *tls) {
     int t = 0, pl = 5;
-    if (!strncasecmp(u, "wss://", 6)) t = 1, pl = 6;
-    else if (strncasecmp(u, "ws://", 5)) return 0;
+    if (!pk_strncasecmp(u, "wss://", 6)) t = 1, pl = 6;
+    else if (pk_strncasecmp(u, "ws://", 5)) return 0;
     const char *a = u + pl, *e = a;
     while (*e && *e != '/' && *e != '?' && *e != '#') e++;
     const char *hs = a, *he = e, *cs = 0;

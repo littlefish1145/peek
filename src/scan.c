@@ -1,6 +1,7 @@
 #include "scan.h"
+#include "platform.h"
 
-#if defined(__x86_64__) || defined(__i386__)
+#if (defined(__x86_64__) || defined(__i386__)) && !defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))
 #define SCAN_X86 1
 #include <immintrin.h>
 #elif defined(__aarch64__)
@@ -39,7 +40,7 @@ static uint64_t scan_mask64_avx2(const char *p) {
     return (uint64_t)l0 | ((uint64_t)l1 << 32);
 }
 
-static int scan_have_avx2(void) { return __builtin_cpu_supports("avx2"); }
+static int scan_have_avx2(void) { return pk_has_avx2(); }
 
 #elif defined(SCAN_NEON)
 
@@ -88,7 +89,7 @@ char *scan_next(const char *p, const char *end, int *has_amp) {
     while (p + 64 <= end) {
         uint64_t m = scan_mask64(p);
         while (m) {
-            int i = __builtin_ctzll(m);
+            int i = (int)pk_ctz64(m);
             if (p[i] == SCAN_LT) { *has_amp = amp; return (char *)(p + i); }
             amp |= (p[i] == SCAN_AMP);
             m &= m - 1;

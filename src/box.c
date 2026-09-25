@@ -8,7 +8,7 @@ static const char *sv(Node *n, const Prop *p) {
 }
 
 static int kw(const char *v, const char *a) { return v && !strcmp(v, a); }
-static int kwp(const char *v, const char *a) { return v && !strncasecmp(v, a, strlen(a)); }
+static int kwp(const char *v, const char *a) { return v && !pk_strncasecmp(v, a, strlen(a)); }
 
 static int len_of(Node *n, const Prop *p, int base, int font, int dflt) {
     const char *v = sv(n, p);
@@ -80,7 +80,7 @@ static void grid_place(const char *v, int *start, int *span) {
     *start = 0;
     *span = 1;
     const char *sl = strchr(v, '/');
-    if (!strncasecmp(v, "span", 4)) {
+    if (!pk_strncasecmp(v, "span", 4)) {
         *span = atoi(v + 4);
         if (*span < 1) *span = 1;
         return;
@@ -89,7 +89,7 @@ static void grid_place(const char *v, int *start, int *span) {
     if (!sl) return;
     const char *r = sl + 1;
     while (*r == ' ') r++;
-    if (!strncasecmp(r, "span", 4)) {
+    if (!pk_strncasecmp(r, "span", 4)) {
         *span = atoi(r + 4);
         if (*span < 1) *span = 1;
     } else {

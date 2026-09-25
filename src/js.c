@@ -1,6 +1,6 @@
 #include "peek.h"
 #include "ws.h"
-#include <time.h>
+#include "platform.h"
 
 static JSRuntime *RT;
 static JSContext *CTX;
@@ -591,9 +591,7 @@ static Tmr *TM;
 static int NTM, TCAP;
 
 static double now_ms(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1e6;
+    return pk_now_ms();
 }
 
 static int tm_add(JSValue cb, double delay, double iv) {
@@ -1965,13 +1963,7 @@ static JSValue j_now(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *a
 }
 
 static void rnd_bytes(unsigned char *b, size_t n) {
-    FILE *f = fopen("/dev/urandom", "rb");
-    if (f) {
-        size_t g = fread(b, 1, n, f);
-        fclose(f);
-        if (g == n) return;
-    }
-    for (size_t i = 0; i < n; i++) b[i] = (unsigned char)(rand() >> 5);
+    if (pk_random(b, n)) abort();
 }
 
 static JSValue j_rgv(JSContext *ctx, JSValueConst thisv, int ac, JSValueConst *av) {
@@ -2328,7 +2320,7 @@ void js_init(void) {
     RT = JS_NewRuntime();
     JS_SetModuleLoaderFunc(RT, 0, js_module_loader, 0);
     CTX = JS_NewContext(RT);
-    JS_NewClassID(&CLS);
+    JS_NewClassID(RT, &CLS);
     static const JSClassDef ELDEF = {.class_name = "Element"};
     JS_NewClass(RT, CLS, &ELDEF);
     ELPROTO = JS_NewObject(CTX);
@@ -2408,6 +2400,7 @@ void js_init(void) {
 void js_done(void) {
     ws_done_all();
     while (ESL) es_drop(ESL);
+    pk_socket_cleanup();
     JS_FreeContext(CTX);
     CTX = 0;
     JS_FreeRuntime(RT);

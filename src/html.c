@@ -59,7 +59,7 @@ static char *raw_end(char *p, char *end, const char *name, int nl) {
         char *lt = memchr(q, '<', (size_t)(end - q));
         if (!lt) return end;
         if (lt + 1 < end && lt[1] == '/' && lt + 2 + nl <= end &&
-            !strncasecmp(lt + 2, name, (size_t)nl)) {
+            !pk_strncasecmp(lt + 2, name, (size_t)nl)) {
             char c = lt + 2 + nl < end ? lt[2 + nl] : (char)0;
             if (lt + 2 + nl >= end || c == '>' || ISWS(c) || c == '/') return lt;
         }

@@ -1,0 +1,136 @@
+schema_version = 3
+
+[project]
+  name = "peek"
+
+[build]
+  profile = "debug"
+  build_dir = "build"
+  c_standard = "c17"
+  cxx_standard = "c++20"
+  compile_flags = ["/MD"]
+  link_flags = ["mbedtls.lib", "mbedx509.lib", "mbedcrypto.lib", "ws2_32.lib", "bcrypt.lib", "d2d1.lib", "dwrite.lib", "user32.lib", "gdi32.lib"]
+  auto_compile_shaders = true
+  modules = false
+  module_scanner = ""
+
+[toolchain]
+  c = "D:\\vs2022\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe"
+  cxx = "D:\\vs2022\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe"
+  archiver = "D:\\vs2022\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\lib.exe"
+  linker = "D:\\vs2022\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe"
+  setup = "D:\\vs2022\\VC\\Auxiliary\\Build\\vcvars64.bat"
+  cuda = ""
+  cuda_mode = "whole"
+  cuda_architectures = ["sm_75"]
+  module_scanner = ""
+
+[vcpkg]
+  root = "C:\\src\\vcpkg"
+  triplet = "x64-windows"
+
+[targets]
+  [targets.peekg]
+    type = "executable"
+    sources = ["src/gui_win32.cpp", "src/box.c", "src/css.c", "src/dom.c", "src/flex.c", "src/html.c", "src/js.c", "src/layout.c", "src/net.c", "src/paint.c", "src/platform_posix.c", "src/platform_win32.c", "src/render.c", "src/scan.c", "src/table.c", "src/term.c", "src/util.c", "src/ws.c"]
+    output_name = "peekg"
+    c_standard = ""
+    cxx_standard = ""
+    export_all_symbols = false
+    include_dirs = []
+    private_include_dirs = []
+    library_dirs = []
+    shader_stage = ""
+    shader_entry = ""
+    shader_tool = ""
+    shader_target_env = ""
+    test_group = ""
+    test_working_dir = ""
+
+    [[targets.peekg.dependencies]]
+      target = ""
+      package = "quickjs-ng"
+      scope = "private"
+
+    [[targets.peekg.dependencies]]
+      target = ""
+      package = "mbedtls"
+      scope = "private"
+
+  [targets.dump]
+    type = "executable"
+    sources = ["src/dump.c", "src/html.c", "src/dom.c", "src/css.c", "src/net.c", "src/util.c", "src/scan.c", "src/platform_posix.c", "src/platform_win32.c"]
+    output_name = "dump"
+    c_standard = ""
+    cxx_standard = ""
+    export_all_symbols = false
+    include_dirs = []
+    private_include_dirs = []
+    library_dirs = []
+    shader_stage = ""
+    shader_entry = ""
+    shader_tool = ""
+    shader_target_env = ""
+    test_group = ""
+    test_working_dir = ""
+
+    [[targets.dump.dependencies]]
+      target = ""
+      package = "quickjs-ng"
+      scope = "private"
+
+    [[targets.dump.dependencies]]
+      target = ""
+      package = "mbedtls"
+      scope = "private"
+
+  [targets.peek]
+    type = "executable"
+    sources = ["src/main.c", "src/box.c", "src/css.c", "src/dom.c", "src/flex.c", "src/html.c", "src/js.c", "src/layout.c", "src/net.c", "src/paint.c", "src/platform_posix.c", "src/platform_win32.c", "src/render.c", "src/scan.c", "src/table.c", "src/term.c", "src/util.c", "src/ws.c"]
+    output_name = "peek"
+    c_standard = ""
+    cxx_standard = ""
+    export_all_symbols = false
+    include_dirs = []
+    private_include_dirs = []
+    library_dirs = []
+    shader_stage = ""
+    shader_entry = ""
+    shader_tool = ""
+    shader_target_env = ""
+    test_group = ""
+    test_working_dir = ""
+
+    [[targets.peek.dependencies]]
+      target = ""
+      package = "quickjs-ng"
+      scope = "private"
+
+    [[targets.peek.dependencies]]
+      target = ""
+      package = "mbedtls"
+      scope = "private"
+
+[packages]
+  [packages.mbedtls]
+    provider = "vcpkg"
+    port = "mbedtls"
+    version = ""
+    features = []
+    triplet = "x64-windows"
+    include_dirs = []
+    library_dirs = []
+    runtime_files = []
+  [packages.quickjs-ng]
+    provider = "vcpkg"
+    port = "quickjs-ng"
+    version = ""
+    features = []
+    triplet = "x64-windows"
+    include_dirs = []
+    library_dirs = []
+    runtime_files = []
+
+[package]
+  format = "zip"
+  output = "dist\\peek.zip"

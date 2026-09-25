@@ -1,7 +1,6 @@
 #include "peek.h"
 #include "box.h"
-#include <sys/ioctl.h>
-#include <unistd.h>
+#include "platform.h"
 #include <stdlib.h>
 
 #define CELL_W 8
@@ -18,10 +17,11 @@ static int env_int(const char *k, int dflt) {
 }
 
 void vx_sync(void) {
-    struct winsize ws;
     int cols = 0, rows = 0;
-    if (ioctl(1, TIOCGWINSZ, &ws) == 0) { cols = ws.ws_col; rows = ws.ws_row; }
-    if (cols <= 0 && ioctl(0, TIOCGWINSZ, &ws) == 0) { cols = ws.ws_col; rows = ws.ws_row; }
+    if (pk_term_size(&cols, &rows)) {
+        cols = 0;
+        rows = 0;
+    }
     V_COLS = env_int("PEEK_COLS", cols > 0 ? cols : 80);
     V_ROWS = env_int("PEEK_ROWS", rows > 0 ? rows : 24);
 }
@@ -125,9 +125,9 @@ static int unit_of(const char *s, const char *e) {
 
 int len_parse(const char *s, const char *e, Len *out) {
     if (!s || s >= e) return 0;
-    if (e - s == 4 && !strncasecmp(s, "auto", 4)) { *out = LEN_AUTO; return 1; }
-    if (e - s == 4 && !strncasecmp(s, "none", 4)) { *out = LEN_AUTO; return 1; }
-    if (e - s == 6 && !strncasecmp(s, "normal", 6)) { *out = LEN_AUTO; return 1; }
+    if (e - s == 4 && !pk_strncasecmp(s, "auto", 4)) { *out = LEN_AUTO; return 1; }
+    if (e - s == 4 && !pk_strncasecmp(s, "none", 4)) { *out = LEN_AUTO; return 1; }
+    if (e - s == 6 && !pk_strncasecmp(s, "normal", 6)) { *out = LEN_AUTO; return 1; }
 
     int neg = 0;
     const char *p = s;

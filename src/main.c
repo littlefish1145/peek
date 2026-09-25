@@ -1,37 +1,15 @@
 #include "peek.h"
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/select.h>
-
-static struct termios SAVED;
-
-static void raw_on(void) {
-    struct termios t;
-    if (tcgetattr(0, &SAVED)) return;
-    t = SAVED;
-    t.c_lflag &= (tcflag_t)~(ICANON | ECHO | ISIG);
-    tcsetattr(0, TCSANOW, &t);
-}
-
-static void raw_off(void) { tcsetattr(0, TCSANOW, &SAVED); }
+#include "platform.h"
 
 static int getkey(int tmo) {
     unsigned char c;
-    if (tmo >= 0) {
-        fd_set rs;
-        struct timeval tv;
-        tv.tv_sec = tmo / 1000;
-        tv.tv_usec = (tmo % 1000) * 1000;
-        FD_ZERO(&rs);
-        FD_SET(0, &rs);
-        if (select(1, &rs, 0, 0, &tv) <= 0) return -2;
-    }
-    if (read(0, &c, 1) != 1) return 'q';
+    int r = pk_term_read(&c, 1, tmo);
+    if (r < 0) return 'q';
+    if (!r) return -2;
     if (c != 27) return c;
     unsigned char b[2];
-    if (read(0, b, 1) != 1) return 'q';
-    if (read(0, b + 1, 1) != 1) return 'q';
+    if (pk_term_read(b, 1, -1) != 1) return 'q';
+    if (pk_term_read(b + 1, 1, -1) != 1) return 'q';
     if (b[0] == '[' && b[1] == 'A') return 1;
     if (b[0] == '[' && b[1] == 'B') return 2;
     return 0;
@@ -54,7 +32,7 @@ static void show_alerts(void) {
         fputs("\x1b[90mpress any key to dismiss\x1b[0m\n", stdout);
         fflush(stdout);
         unsigned char c;
-        if (read(0, &c, 1) != 1) return;
+        if (pk_term_read(&c, 1, -1) != 1) return;
     }
 }
 
@@ -191,22 +169,20 @@ int main(int argc, char **argv) {
         return 0;
     }
     if (runms) {
-        struct timespec a, b;
-        clock_gettime(CLOCK_MONOTONIC, &a);
+        double started = pk_now_ms();
         for (;;) {
             js_pump();
             double w = js_next_wait();
             if (w < 0) break;
             if (w > 50) w = 50;
-            usleep((useconds_t)(w * 1000) + 1000);
-            clock_gettime(CLOCK_MONOTONIC, &b);
-            if ((b.tv_sec - a.tv_sec) * 1000 + (b.tv_nsec - a.tv_nsec) / 1000000 > runms) break;
+            pk_sleep_ms((unsigned)(w * 1000.0) + 1000u);
+            if (pk_now_ms() - started > runms) break;
         }
         for (int i = 0; i < NLOG; i++) puts(LOGS[i]);
         js_done();
         return 0;
     }
-    if (!isatty(0) || !isatty(1)) {
+    if (!pk_term_is_tty()) {
         FOC = 0;
         js_pump();
         apply_styles(DOM);
@@ -220,7 +196,7 @@ int main(int argc, char **argv) {
         js_done();
         return 0;
     }
-    raw_on();
+    pk_term_init();
     fputs("\x1b[?25l", stdout);
     frame();
     show_alerts();
@@ -255,7 +231,7 @@ int main(int argc, char **argv) {
         hint();
     }
     js_done();
-    raw_off();
+    pk_term_shutdown();
     fputs("\x1b[?25h", stdout);
     putchar('\n');
     return 0;
